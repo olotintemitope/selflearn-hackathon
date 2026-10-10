@@ -70,6 +70,10 @@ Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2re
 
 ## Components
 
+### Cards
+
+Cards use surface color, spacing, radius, and restrained shadow for grouping. Never add a border as card decoration. Borders remain appropriate when they communicate meaning or interaction, such as an alert state, form control, table division, or focus indicator.
+
 ### Header
 
 Use the serif SelfLearn wordmark on the left and one compact session action on the right. Keep the header quiet so learner content remains dominant.

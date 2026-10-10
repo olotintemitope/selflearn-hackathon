@@ -29,4 +29,14 @@ class LearningSpace extends Model
     {
         return $this->hasMany(Concept::class);
     }
+
+    public function learningPaths(): HasMany
+    {
+        return $this->hasMany(LearningPath::class);
+    }
+
+    public function tutorMessages(): HasMany
+    {
+        return $this->hasMany(TutorMessage::class);
+    }
 }
