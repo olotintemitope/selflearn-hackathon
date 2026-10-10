@@ -17,5 +17,6 @@ Read relevant docs before changing code. Inspect existing conventions and keep c
 
 Architecture: docs/ARCHITECTURE.md. AI contracts: docs/AI_CONTRACTS.md.
 Workflow: docs/WORKFLOW.md. Scope: docs/PRODUCT.md.
+Design system: docs/DESIGN_SYSTEM.md. Use semantic HTML5 and target WCAG 2.1 AA for every learner-facing screen; browser-test desktop, mobile, reflow, zoom, and keyboard behavior.
 
 Recording setup: docs/SETUP.md. Offline requirements and proof: docs/LOW_BANDWIDTH.md. Implement a browser-side offline flow; server-rendered Livewire actions alone cannot satisfy offline acceptance.
