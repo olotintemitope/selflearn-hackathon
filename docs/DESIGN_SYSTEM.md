@@ -67,12 +67,25 @@ Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2re
 - Cards use `1.5rem` padding; high-focus forms may grow to `2.5rem` on wide screens.
 - Use grid gaps instead of margins between repeated items.
 - At `700px` and below, multi-column forms collapse to one column and card padding tightens.
+- Adjacent page regions retain at least `1.5rem` separation; content must remain in normal document flow and never overlap.
+- Flexible action and metadata rows wrap when space is limited. Text may wrap but must not be clipped or force horizontal scrolling.
+- At 320 CSS pixels and 200% zoom, controls, cards, headings, status messages, and source evidence retain readable spacing and usable padding.
 
 ## Components
 
 ### Cards
 
 Cards use surface color, spacing, radius, and restrained shadow for grouping. Never add a border as card decoration. Borders remain appropriate when they communicate meaning or interaction, such as an alert state, form control, table division, or focus indicator.
+
+### Asynchronous status
+
+Describe the learner outcome in plain language, such as “Preparing your study guide,” rather than exposing implementation terms such as queues, workers, jobs, terminal commands, or provider operations.
+
+- Update the page automatically while work is pending; do not require manual refresh.
+- Use `role="status"` with `aria-live="polite"` for non-urgent progress changes.
+- Tell learners when they may safely leave and return later.
+- Provide an actionable retry control only after a failure.
+- Keep operational setup and debugging instructions in developer documentation and logs, never in learner-facing status cards.
 
 ### Header
 
@@ -81,10 +94,6 @@ Use the serif SelfLearn wordmark on the left and one compact session action on t
 ### Hero
 
 Order content as eyebrow → `h1` → concise lead. Use a display-sized title only for the primary promise or outcome, not every page.
-
-### Cards
-
-Use paper background, one-pixel border, `1rem` radius, and a restrained green-tinted shadow. A card must group related information; do not wrap every line in a card.
 
 ### Forms
 
