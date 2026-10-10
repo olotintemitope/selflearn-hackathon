@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\StudyController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/materials');
@@ -20,4 +21,6 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/materials/{material}', [MaterialController::class, 'show'])->name('materials.show');
     Route::get('/materials/{material}/download', [MaterialController::class, 'download'])->name('materials.download');
     Route::post('/materials/{material}/retry', [MaterialController::class, 'retry'])->name('materials.retry');
+    Route::get('/spaces/{learningSpace}/study', [StudyController::class, 'show'])->name('study.show');
+    Route::post('/spaces/{learningSpace}/tutor', [StudyController::class, 'ask'])->name('tutor.ask');
 });
