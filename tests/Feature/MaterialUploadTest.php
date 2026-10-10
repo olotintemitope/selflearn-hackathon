@@ -16,6 +16,21 @@ class MaterialUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_authentication_pages_are_separate_and_linked(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('Welcome back')
+            ->assertSee('Create an account')
+            ->assertDontSee('Confirm password');
+
+        $this->get(route('register'))
+            ->assertOk()
+            ->assertSee('Create your study space')
+            ->assertSee('Already have an account?')
+            ->assertDontSee('Welcome back');
+    }
+
     public function test_owner_can_upload_to_private_storage_and_processing_is_queued(): void
     {
         Storage::fake('local');

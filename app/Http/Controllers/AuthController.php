@@ -9,9 +9,14 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    public function create()
+    public function createLogin()
     {
         return view('auth.login');
+    }
+
+    public function createRegister()
+    {
+        return view('auth.register');
     }
 
     public function register(Request $request)
