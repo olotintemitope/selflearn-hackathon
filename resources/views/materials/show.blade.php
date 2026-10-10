@@ -6,7 +6,12 @@
         <div class="actions"><span class="status status-{{ $material->status }}">{{ ucfirst($material->status) }}</span><a href="{{ route('materials.download', $material) }}">Download original</a></div>
     </section>
     @if (in_array($material->status, ['pending', 'processing']))
-        <div class="card"><h2>Processing your material</h2><p>Run the queue worker with <code>php artisan queue:work</code>. Refresh this page to see extracted concepts.</p></div>
+        <div class="card" role="status" aria-live="polite">
+            <h2>Preparing your study guide</h2>
+            <p>We’re reading your material and organizing its key concepts. This page will update automatically when it’s ready.</p>
+            <p class="muted">You can safely leave this page and return later.</p>
+        </div>
+        <script>window.setTimeout(() => window.location.reload(), 3000);</script>
     @elseif ($material->status === 'failed')
         <div class="error"><h2>Processing stopped</h2><p>{{ $material->failure_message }}</p><form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form></div>
     @else

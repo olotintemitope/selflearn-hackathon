@@ -78,4 +78,17 @@ class MaterialUploadTest extends TestCase
         ])->assertSessionHasErrors('material');
         $this->assertDatabaseCount('materials', 0);
     }
+
+    public function test_pending_material_shows_learner_focused_automatic_progress(): void
+    {
+        $material = Material::factory()->create(['status' => 'processing']);
+
+        $this->actingAs($material->learningSpace->user)->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('Preparing your study guide')
+            ->assertSee('This page will update automatically')
+            ->assertSee('window.location.reload()', false)
+            ->assertDontSee('queue:work')
+            ->assertDontSee('Run the queue worker');
+    }
 }
