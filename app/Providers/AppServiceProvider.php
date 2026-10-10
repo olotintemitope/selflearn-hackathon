@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Services\Learning\ConceptExtractor;
 use App\Services\Learning\OpenAiConceptExtractor;
+use App\Services\Learning\OpenAiQuizGenerator;
 use App\Services\Learning\OpenAiTutor;
+use App\Services\Learning\QuizGenerator;
 use App\Services\Learning\Tutor;
 use App\Services\Ocr\CloudOcrClient;
 use App\Services\Ocr\MaterialExtractionRouter;
@@ -26,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(OcrClient::class, MaterialExtractionRouter::class);
         $this->app->bind(ConceptExtractor::class, OpenAiConceptExtractor::class);
         $this->app->bind(Tutor::class, OpenAiTutor::class);
+        $this->app->bind(QuizGenerator::class, OpenAiQuizGenerator::class);
     }
 
     /**

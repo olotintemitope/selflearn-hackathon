@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Concept extends Model
 {
@@ -24,5 +25,10 @@ class Concept extends Model
     {
         return $this->belongsToMany(self::class, 'concept_dependencies', 'concept_id', 'prerequisite_concept_id')
             ->withPivot('source_supported');
+    }
+
+    public function assessmentQuestions(): HasMany
+    {
+        return $this->hasMany(AssessmentQuestion::class);
     }
 }

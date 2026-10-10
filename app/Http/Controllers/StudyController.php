@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LearningSpace;
+use App\Services\Learning\AssessmentProgress;
 use App\Services\Learning\ChunkRetriever;
 use App\Services\Learning\LearningPathBuilder;
 use App\Services\Learning\OpenAiTutor;
@@ -12,13 +13,14 @@ use Illuminate\Http\Request;
 
 class StudyController extends Controller
 {
-    public function show(Request $request, LearningSpace $learningSpace, LearningPathBuilder $paths)
+    public function show(Request $request, LearningSpace $learningSpace, LearningPathBuilder $paths, AssessmentProgress $progressService)
     {
         $this->authorizeSpace($request, $learningSpace);
         $path = $paths->build($learningSpace);
         $messages = $learningSpace->tutorMessages()->latest()->limit(20)->get()->reverse()->values();
+        $assessmentProgress = $progressService->forSpace($learningSpace, $request->user());
 
-        return view('study.show', compact('learningSpace', 'path', 'messages'));
+        return view('study.show', compact('learningSpace', 'path', 'messages', 'assessmentProgress'));
     }
 
     public function ask(Request $request, LearningSpace $learningSpace, ChunkRetriever $retriever, Tutor $tutor)
