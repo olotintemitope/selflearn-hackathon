@@ -26,6 +26,7 @@ class MaterialController extends Controller
         $space = $request->user()->learningSpaces()->findOrFail($request->integer('learning_space_id'));
         $material = $space->materials()->create([
             'title' => $request->string('title')->toString(),
+            'role' => $request->string('role')->toString(),
             'private_source_path' => $path,
             'original_filename' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
@@ -33,7 +34,7 @@ class MaterialController extends Controller
         ]);
         ProcessMaterial::dispatch($material->id);
 
-        return redirect()->route('materials.show', $material)->with('status', 'Upload saved privately and queued for processing.');
+        return redirect()->route('materials.show', $material)->with('status', 'Material added. We’ll prepare its concepts for your study guide.');
     }
 
     public function show(Request $request, Material $material)

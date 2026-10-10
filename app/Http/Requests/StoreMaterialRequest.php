@@ -3,8 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Models\LearningSpace;
+use App\Models\Material;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMaterialRequest extends FormRequest
 {
@@ -27,6 +29,7 @@ class StoreMaterialRequest extends FormRequest
         return [
             'learning_space_id' => ['required', 'integer', 'exists:learning_spaces,id'],
             'title' => ['required', 'string', 'max:150'],
+            'role' => ['required', Rule::in(array_keys(Material::ROLES))],
             'material' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ];
     }

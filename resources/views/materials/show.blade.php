@@ -1,7 +1,7 @@
 <x-layouts.app :title="$material->title.' — SelfLearn'">
-    <a href="{{ route('materials.index') }}">← All materials</a>
+    <a href="{{ route('materials.index') }}#space-{{ $material->learning_space_id }}-materials">← Back to this study space</a>
     <section class="hero compact">
-        <p class="eyebrow">{{ $material->original_filename }}</p>
+        <p class="eyebrow">{{ $material->learningSpace->title }} · {{ $material->roleLabel() }}</p>
         <h1>{{ $material->title }}</h1>
         <div class="actions"><span class="status status-{{ $material->status }}">{{ ucfirst($material->status) }}</span><a href="{{ route('materials.download', $material) }}">Download original</a></div>
     </section>
