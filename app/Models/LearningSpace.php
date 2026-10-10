@@ -10,10 +10,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LearningSpace extends Model
 {
+    public const PURPOSES = [
+        'exam_prep' => 'Prepare for an exam',
+        'learn_topic' => 'Learn a topic',
+        'course' => 'Study a course',
+        'general' => 'General study',
+    ];
+
     /** @use HasFactory<LearningSpaceFactory> */
     use HasFactory;
 
-    protected $fillable = ['title', 'goal', 'preferred_language'];
+    protected $fillable = ['title', 'purpose', 'goal', 'subject', 'level', 'exam_date', 'preferred_language'];
+
+    protected function casts(): array
+    {
+        return ['exam_date' => 'date'];
+    }
+
+    public function purposeLabel(): string
+    {
+        return self::PURPOSES[$this->purpose] ?? self::PURPOSES['general'];
+    }
 
     public function user(): BelongsTo
     {

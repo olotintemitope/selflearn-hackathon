@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\LearningSpaceController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\StudyController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/materials', [MaterialController::class, 'index'])->name('materials.index');
     Route::post('/materials', [MaterialController::class, 'store'])->name('materials.store');
+    Route::post('/spaces', [LearningSpaceController::class, 'store'])->name('spaces.store');
     Route::get('/materials/{material}', [MaterialController::class, 'show'])->name('materials.show');
     Route::get('/materials/{material}/download', [MaterialController::class, 'download'])->name('materials.download');
     Route::post('/materials/{material}/retry', [MaterialController::class, 'retry'])->name('materials.retry');

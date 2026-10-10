@@ -40,6 +40,7 @@ class MaterialUploadTest extends TestCase
         $response = $this->actingAs($space->user)->post(route('materials.store'), [
             'learning_space_id' => $space->id,
             'title' => 'Photosynthesis notes',
+            'role' => 'study_notes',
             'material' => UploadedFile::fake()->image('leaf-notes.png'),
         ]);
 
@@ -61,6 +62,7 @@ class MaterialUploadTest extends TestCase
         $this->actingAs($other)->post(route('materials.store'), [
             'learning_space_id' => $ownerSpace->id,
             'title' => 'Stolen',
+            'role' => 'study_notes',
             'material' => UploadedFile::fake()->image('notes.png'),
         ])->assertForbidden();
         $this->actingAs($other)->get(route('materials.show', $material))->assertForbidden();
@@ -74,9 +76,61 @@ class MaterialUploadTest extends TestCase
         $this->actingAs($space->user)->post(route('materials.store'), [
             'learning_space_id' => $space->id,
             'title' => 'Executable',
+            'role' => 'study_notes',
             'material' => UploadedFile::fake()->create('unsafe.exe', 10, 'application/octet-stream'),
         ])->assertSessionHasErrors('material');
         $this->assertDatabaseCount('materials', 0);
+    }
+
+    public function test_learner_can_create_goal_oriented_space_and_add_role_classified_materials(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('spaces.store'), [
+            'title' => 'Biology exam revision',
+            'purpose' => 'exam_prep',
+            'subject' => 'Biology',
+            'level' => 'Senior secondary',
+            'exam_date' => '2027-06-01',
+            'goal' => 'Prepare for essay and practical questions',
+        ])->assertRedirect(route('materials.index'));
+
+        $space = LearningSpace::firstOrFail();
+        $this->assertSame($user->id, $space->user_id);
+        $this->assertSame('exam_prep', $space->purpose);
+        $this->assertSame('2027-06-01', $space->exam_date->toDateString());
+
+        foreach ([['Revision notes', 'study_notes'], ['Past paper 2025', 'past_paper']] as [$title, $role]) {
+            $this->post(route('materials.store'), [
+                'learning_space_id' => $space->id,
+                'title' => $title,
+                'role' => $role,
+                'material' => UploadedFile::fake()->image(str($title)->slug().'.png'),
+            ])->assertRedirect();
+        }
+
+        $this->assertDatabaseCount('materials', 2);
+        $this->assertSame(['past_paper', 'study_notes'], $space->materials()->orderBy('role')->pluck('role')->all());
+        $this->actingAs($user)->get(route('materials.index'))
+            ->assertOk()
+            ->assertSee('Add another material')
+            ->assertSee('Past paper')
+            ->assertSee('add more later');
+    }
+
+    public function test_space_creation_rejects_unknown_purposes_and_keeps_spaces_private(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $this->actingAs($owner)->post(route('spaces.store'), [
+            'title' => 'Invalid',
+            'purpose' => 'school_subject',
+        ])->assertSessionHasErrors('purpose');
+
+        $space = LearningSpace::factory()->for($owner)->create();
+        $this->actingAs($other)->get(route('study.show', $space))->assertForbidden();
     }
 
     public function test_pending_material_shows_learner_focused_automatic_progress(): void
