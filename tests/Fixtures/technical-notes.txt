@@ -1,0 +1,1 @@
+HTML provides document structure. CSS applies presentation rules to that structure.

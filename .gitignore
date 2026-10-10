@@ -5,3 +5,7 @@
 /node_modules/
 /storage/*.key
 /public/build/
+/.phpunit.cache/
+/.phpunit.result.cache
+/auth.json
+/.playwright-mcp/
