@@ -53,7 +53,13 @@ class ProcessMaterial implements ShouldQueue
                 'content' => $page['content'],
                 'page' => $page['page'],
                 'section' => null,
-                'locator' => ['page' => $page['page']],
+                'locator' => [
+                    'page' => $page['page'],
+                    'extractor' => $page['extractor'] ?? $ocrResult->extractor,
+                    'warnings' => $page['warnings'] ?? [],
+                    'provider_request_id' => $page['provider_request_id'] ?? null,
+                    'confidence' => $page['confidence'] ?? null,
+                ],
             ]));
 
             $graph = $extractor->extract($chunks->map(fn ($chunk) => [
@@ -80,6 +86,8 @@ class ProcessMaterial implements ShouldQueue
                 'metadata' => [
                     'ocr_confidence' => $ocrResult->confidence,
                     'ocr_request_id' => $ocrResult->providerRequestId,
+                    'extractor' => $ocrResult->extractor,
+                    'extraction_warnings' => $ocrResult->warnings,
                     'concept_prompt_version' => OpenAiConceptExtractor::PROMPT_VERSION,
                 ],
             ]);

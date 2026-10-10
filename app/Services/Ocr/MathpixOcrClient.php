@@ -2,11 +2,12 @@
 
 namespace App\Services\Ocr;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 
-final class MathpixOcrClient implements OcrClient
+final class MathpixOcrClient implements CloudOcrClient
 {
     public function __construct(private HttpFactory $http) {}
 
@@ -14,9 +15,13 @@ final class MathpixOcrClient implements OcrClient
     {
         $this->ensureConfigured();
 
-        return $mimeType === 'application/pdf'
-            ? $this->extractPdf($bytes)
-            : $this->extractImage($bytes, $mimeType);
+        try {
+            return $mimeType === 'application/pdf'
+                ? $this->extractPdf($bytes)
+                : $this->extractImage($bytes, $mimeType);
+        } catch (ConnectionException) {
+            throw new OcrException('Mathpix could not be reached. Please retry.');
+        }
     }
 
     private function extractImage(string $bytes, string $mimeType): OcrResult
@@ -35,9 +40,10 @@ final class MathpixOcrClient implements OcrClient
         }
 
         return new OcrResult(
-            [['page' => 1, 'content' => $text]],
+            [['page' => 1, 'content' => $text, 'extractor' => 'mathpix', 'warnings' => []]],
             is_numeric($response->json('confidence')) ? (float) $response->json('confidence') : null,
             $response->json('request_id'),
+            'mathpix',
         );
     }
 
@@ -64,7 +70,7 @@ final class MathpixOcrClient implements OcrClient
                 $lines = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId.'.lines.json');
                 $this->assertSuccessful($lines);
 
-                return new OcrResult($this->parsePdfPages($lines->body()), null, $pdfId);
+                return new OcrResult($this->parsePdfPages($lines->body()), null, $pdfId, 'mathpix');
             }
             if ($status->json('status') === 'error') {
                 throw new OcrException('Mathpix could not process this PDF.');

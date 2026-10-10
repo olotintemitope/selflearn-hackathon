@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Ocr\MathpixOcrClient;
+use App\Services\Ocr\OcrException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -56,5 +57,20 @@ class MathpixOcrClientTest extends TestCase
             && str_contains($request->body(), '%PDF bytes')
             && str_contains($request->body(), 'improve_mathpix')
         );
+    }
+
+    public function test_connection_failure_is_sanitized(): void
+    {
+        config()->set('services.mathpix', [
+            'app_id' => 'test-id', 'app_key' => 'test-key',
+            'image_endpoint' => 'https://api.mathpix.com/v3/text',
+            'pdf_endpoint' => 'https://api.mathpix.com/v3/pdf',
+        ]);
+        Http::fake(fn () => Http::failedConnection('secret transport detail'));
+
+        $this->expectException(OcrException::class);
+        $this->expectExceptionMessage('Mathpix could not be reached. Please retry.');
+
+        app(MathpixOcrClient::class)->extract('binary-image', 'image/png');
     }
 }

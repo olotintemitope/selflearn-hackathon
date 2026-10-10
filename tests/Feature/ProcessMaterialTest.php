@@ -25,7 +25,12 @@ class ProcessMaterialTest extends TestCase
         {
             public function extract(string $bytes, string $mimeType): OcrResult
             {
-                return new OcrResult([['page' => 1, 'content' => 'Photosynthesis converts light energy into chemical energy.']], .97, 'ocr-1');
+                return new OcrResult([[
+                    'page' => 1,
+                    'content' => 'Photosynthesis converts light energy into chemical energy.',
+                    'extractor' => 'tesseract',
+                    'warnings' => ['Page 1 required local OCR.'],
+                ]], .97, 'ocr-1', 'tesseract', ['Page 1 required local OCR.']);
             }
         };
         $extractor = new class implements ConceptExtractor
@@ -45,6 +50,9 @@ class ProcessMaterialTest extends TestCase
         $this->assertSame('ready', $material->status);
         $this->assertSame(1, $material->extraction_version);
         $this->assertSame(1, $material->chunks()->first()->page);
+        $this->assertSame('tesseract', $material->chunks()->first()->locator['extractor']);
+        $this->assertSame('tesseract', $material->metadata['extractor']);
+        $this->assertSame(['Page 1 required local OCR.'], $material->metadata['extraction_warnings']);
         $concept = $material->learningSpace->concepts()->firstOrFail();
         $this->assertSame([$material->chunks()->first()->id], $concept->sources()->pluck('material_chunks.id')->all());
         Storage::disk('local')->assertExists($material->private_source_path);
