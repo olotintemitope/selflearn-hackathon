@@ -42,6 +42,16 @@ return [
         'pdf_endpoint' => env('MATHPIX_PDF_ENDPOINT', 'https://api.mathpix.com/v3/pdf'),
     ],
 
+    'extraction' => [
+        'pdftotext_binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
+        'pdfinfo_binary' => env('PDFINFO_BINARY', 'pdfinfo'),
+        'magick_binary' => env('MAGICK_BINARY', 'magick'),
+        'tesseract_binary' => env('TESSERACT_BINARY', 'tesseract'),
+        'tesseract_language' => env('TESSERACT_LANGUAGE', 'eng'),
+        'process_timeout' => (int) env('EXTRACTION_PROCESS_TIMEOUT', 30),
+        'max_pdf_pages' => (int) env('EXTRACTION_MAX_PDF_PAGES', 50),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'endpoint' => env('OPENAI_API_ENDPOINT', 'https://api.openai.com/v1'),

@@ -11,6 +11,9 @@
         <div class="error"><h2>Processing stopped</h2><p>{{ $material->failure_message }}</p><form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form></div>
     @else
         @if (($material->metadata['ocr_confidence'] ?? 1) < 0.8)<p class="notice">OCR confidence is low. Compare concepts with the original before studying.</p>@endif
+        @if (! empty($material->metadata['extraction_warnings']))
+            <aside class="notice" aria-labelledby="extraction-warnings-heading"><h2 id="extraction-warnings-heading">Extraction notes</h2><ul>@foreach ($material->metadata['extraction_warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul></aside>
+        @endif
         <section><div class="section-heading"><div><p class="eyebrow">Your next step</p><h2>Source-linked concepts</h2></div><a class="button-link" href="{{ route('study.show', $material->learningSpace) }}">Open study path</a></div><div class="concept-grid">
             @foreach ($material->learningSpace->concepts as $concept)
                 @if ($concept->sources->whereIn('material_id', [$material->id])->isNotEmpty())

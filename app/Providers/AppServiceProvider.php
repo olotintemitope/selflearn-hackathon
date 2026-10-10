@@ -6,8 +6,12 @@ use App\Services\Learning\ConceptExtractor;
 use App\Services\Learning\OpenAiConceptExtractor;
 use App\Services\Learning\OpenAiTutor;
 use App\Services\Learning\Tutor;
+use App\Services\Ocr\CloudOcrClient;
+use App\Services\Ocr\MaterialExtractionRouter;
 use App\Services\Ocr\MathpixOcrClient;
 use App\Services\Ocr\OcrClient;
+use App\Services\Ocr\ProcessRunner;
+use App\Services\Ocr\SymfonyProcessRunner;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -17,7 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(OcrClient::class, MathpixOcrClient::class);
+        $this->app->bind(ProcessRunner::class, SymfonyProcessRunner::class);
+        $this->app->bind(CloudOcrClient::class, MathpixOcrClient::class);
+        $this->app->bind(OcrClient::class, MaterialExtractionRouter::class);
         $this->app->bind(ConceptExtractor::class, OpenAiConceptExtractor::class);
         $this->app->bind(Tutor::class, OpenAiTutor::class);
     }
