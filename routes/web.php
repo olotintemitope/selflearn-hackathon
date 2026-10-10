@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LearningSpaceController;
 use App\Http\Controllers\MaterialController;
@@ -25,4 +26,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/materials/{material}/retry', [MaterialController::class, 'retry'])->name('materials.retry');
     Route::get('/spaces/{learningSpace}/study', [StudyController::class, 'show'])->name('study.show');
     Route::post('/spaces/{learningSpace}/tutor', [StudyController::class, 'ask'])->name('tutor.ask');
+    Route::post('/spaces/{learningSpace}/concepts/{concept}/assessments', [AssessmentController::class, 'store'])->name('assessments.store');
+    Route::get('/assessments/{assessment}', [AssessmentController::class, 'show'])->name('assessments.show');
+    Route::post('/assessments/{assessment}/attempts', [AssessmentController::class, 'submit'])->name('assessments.submit');
 });

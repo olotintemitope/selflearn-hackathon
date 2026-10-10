@@ -3,7 +3,7 @@
     <header class="hero compact">
         <p class="eyebrow">Adaptive study</p>
         <h1>Your learning path</h1>
-        <p>Study prerequisite ideas first, then use the tutor to ask questions grounded in your own materials.</p>
+        <p>Study prerequisite ideas first, practise what you know, then ask questions grounded in your own materials.</p>
     </header>
 
     <section aria-labelledby="path-heading">
@@ -13,10 +13,20 @@
         @else
             <ol class="learning-path">
                 @foreach ($path->items as $item)
-                    <li class="card">
+                    <li class="card" id="concept-{{ $item->concept_id }}">
                         <span class="path-number" aria-hidden="true">{{ $item->position }}</span>
                         <div><h3>{{ $item->concept->name }}</h3><p>{{ $item->concept->description }}</p>
-                        @if ($item->concept->prerequisites->isNotEmpty())<p class="muted">Builds on {{ $item->concept->prerequisites->pluck('name')->join(', ') }}</p>@endif</div>
+                        @if ($item->concept->prerequisites->isNotEmpty())<p class="muted">Builds on {{ $item->concept->prerequisites->pluck('name')->join(', ') }}</p>@endif
+                        @php($progress = $assessmentProgress[$item->concept_id] ?? null)
+                        <p class="muted">
+                            @if ($progress)
+                                {{ $progress['percentage'] }}% correct across {{ $progress['answered'] }} {{ \Illuminate\Support\Str::plural('question', $progress['answered']) }}
+                            @else
+                                Not assessed yet
+                            @endif
+                        </p>
+                        @if ($item->concept->sources_exists)<form method="POST" action="{{ route('assessments.store', [$learningSpace, $item->concept]) }}">@csrf<button>Generate exam-style practice</button></form>@endif
+                        </div>
                     </li>
                 @endforeach
             </ol>
