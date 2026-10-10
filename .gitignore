@@ -9,3 +9,22 @@
 /.phpunit.result.cache
 /auth.json
 /.playwright-mcp/
+
+# Local tooling and editor state
+/.fleet/
+/.idea/
+/.vscode/
+/.zed/
+/.DS_Store
+**/.DS_Store
+
+# Local package-manager and debug output
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local test and browser artifacts
+/coverage/
+/playwright-report/
+/test-results/
