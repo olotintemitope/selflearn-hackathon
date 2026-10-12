@@ -12,11 +12,14 @@ class AssessmentAnswer extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['assessment_question_id', 'selected_option_id', 'correct'];
+    protected $fillable = [
+        'assessment_question_id', 'selected_option_id', 'correct', 'written_response', 'marking_status',
+        'points_awarded', 'max_points', 'marking_feedback', 'marking_citations', 'marking_criteria_results',
+    ];
 
     protected function casts(): array
     {
-        return ['correct' => 'boolean'];
+        return ['correct' => 'boolean', 'marking_citations' => 'array', 'marking_criteria_results' => 'array'];
     }
 
     public function attempt(): BelongsTo

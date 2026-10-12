@@ -22,6 +22,7 @@
 - `docs/DATA_MODEL.md`
 - `docs/DEMO.md`
 - `docs/DEVELOPMENT_LOG.md`
+- `docs/EXTRACTION_STACK.md`
 - `docs/FOLDER_STRUCTURE.md`
 - `docs/LOW_BANDWIDTH.md`
 - `docs/PRODUCT.md`

@@ -1,0 +1,78 @@
+# Slice 5: PDF → personal learning guide → practice and tutor
+
+**Backlog status:** Partially complete; the current clock path is clean, but demo acceptance is still open (latest rubric 10/14, below the 12/14 pass threshold). See [the prioritized backlog](../BACKLOG.md).
+
+## Goal
+
+Let anyone turn their own PDFs into a goal-oriented learning guide: understand relevant material, build a source-linked learning path, practise with quizzes, and ask follow-up questions. Explanations adapt to the learner’s goal, background, and preferred language. Demonstrate both ordinary technical prose (for example, a developer learning software design patterns) and visual content (for example, clock-reading pages), plus another STEM domain such as quantitative analysis, chemistry, or AI/ML.
+
+## Learner flow
+
+1. A learner creates a study space around a goal (for example, “Understand software design patterns for my work” or “Learn to read analogue clocks”) and uploads PDFs, book pages, notes, or references.
+2. Ingestion identifies the document’s topics and relevant sections against the goal, preserves the original and page locations, and records extraction method and uncertainty. Use the appropriate text extraction for ordinary prose and Mathpix as the canonical STEM OCR provider; uncertain visual interpretations are not silently treated as facts.
+3. The guide builds a source-linked path and explains concepts at the learner’s level, keeping source content, AI-generated explanation, and supplementary knowledge distinguishable.
+4. The learner queries their AI guide about a concept or source, takes a source-grounded quiz, requests a hint, or asks follow-up questions. Answers cite relevant pages, state when the guide lacks evidence, and feedback helps explain mistakes and adapt the next step to the learner’s goal and demonstrated responses.
+5. For visual clock material, the learner practises on an accurate generated clock face. They can choose an available language and request read-aloud; the visual remains available during narration, with readable text as fallback if a suitable voice is unavailable.
+6. The demo completes a technical-prose flow (such as design patterns) and a visual/STEM flow (such as clock reading, quantitative analysis, chemistry, or AI/ML) to demonstrate domain-independent learning.
+
+## Acceptance criteria
+
+- [x] Topics and relevant sections are identified from document content and learning goal, not only filename, upload order, or a fixed subject taxonomy. Evidence: relevance tests cover goal-scoped related/separate/uncertain pages; live scans included a mismatched food-studies page that stayed out of a Physics path.
+- [x] Mixed-source documents can contribute relevant pages/sections without importing unrelated sections into the guide; all original files remain preserved. Evidence: processing tests retain unrelated pages but create no concepts from them; the live supplied-scan-folder check kept food studies out of the Physics concept path.
+- [x] Extraction provenance, page references, and warnings are retained. STEM content uses Mathpix; pages with a missing or below-threshold Mathpix `confidence_rate` stay out of relevance and concept generation until the learner reviews the original. Evidence: the supplied handwritten Physics scan was uploaded in-app; Mathpix omitted `confidence_rate`, so the browser showed a review decision and a direct original-file link. A deterministic test covers below-threshold rates.
+- [x] Interpret clock diagrams from a real upload before generating source-grounded clock questions. The failed baseline is recorded above. A local GD reader holds the page for review and proposes candidate times. On a fresh browser upload of the same CC BY-SA 4.0 [Balyakal clock worksheet](https://commons.wikimedia.org/wiki/File:Balyakal_clock-face-sheets_2.webp), it proposed all six visible times correctly. The browser required every time to be checked; only after comparison with the original were they added as learner-confirmed visual evidence, separate from Mathpix OCR. The app then created a source-linked concept, a tutor explanation and check question, and guided practice. The latest live study view showed a recorded 8/8 practice result and provisional 5/5 written feedback. New hand-position items are marked supplementary when the text contains checked times but not the visual positions; exam mode rejects these items. Unit and feature tests cover the confirmation and grounding boundaries. This clock-specific reader is not a general diagram-understanding capability. Official [Mathpix image OCR docs](https://docs.mathpix.com/reference/post-v3-text) describe OCR output and diagram geometry, not semantic clock reading.
+- [x] A technical-prose guide builds concepts, a useful learning path, and a source-grounded explanation without requiring STEM content. Evidence: the live ICT scan flow reached concepts, a path, cited tutor responses, and practice; a design-pattern-specific source has not been tested.
+- [x] The learner can query the AI guide across relevant materials in the study space, ask follow-up questions, and receive page-grounded citations or a clear insufficient-evidence response when sources do not answer the question. Evidence: feature tests cover follow-up, citations, and insufficient evidence; live Nigeria-history and ICT journeys exercised cited tutor follow-ups.
+- [x] Standalone demo practice generates analogue clock faces as SVG from validated times; do not rely on an image model to position hands. The displayed hands and expected answer agree.
+- [x] Show learner-confirmed clock times as accessible clock drawings in the study guide when its text refers to those diagrams. Label them as recreated from confirmed readings, not images from the uploaded page. Feature tests confirm only valid, learner-confirmed times are drawn; live browser checks showed all six clocks at laptop and 320px widths with no horizontal overflow.
+- [x] Quiz practice is generated from relevant source content, with useful feedback and no answer exposed before the learner responds. Standalone clock practice asks the learner to read a displayed time and offers progressive hints and feedback.
+- [x] Standalone clock practice offers four compact, selectable native radio options styled as buttons (not a long select dropdown); browser checks confirm keyboard selection, visible focus/selected states, and 48px touch targets.
+- [x] Standalone clock practice gives a progressive hint and, after submission, explains the minute-hand and hour-hand relationship with a meaningful correction. Learner-level adaptation remains future work.
+- [x] The learner can follow up in the tutor. Responses cite relevant uploaded sources when supported, label generated/supplementary explanation, and say when source evidence is insufficient.
+- [x] Generated examples are visibly distinct from scanned/source examples and are not presented as quotations or exact reproductions of a book. The clock demo explicitly labels its SVG as newly generated, not copied from an upload.
+- [x] A learner-selected language is used for new tutor text. Live browser verified a Yoruba tutor reply while keeping the English source quotation verbatim. This does not verify translation quality; fluent-speaker review remains open.
+- [ ] Read-aloud follows the selected language where a matching browser voice is available, with pause/replay controls and readable-text fallback when it is not. The standalone clock read-aloud currently offers English voices only; non-English voice fallback is unverified. No voice recording is required for this slice.
+- [x] The standalone clock-practice controls use native labelled forms and keyboard-operable controls; SVG clocks have a text equivalent, and the layout has a single-column mobile/reflow mode. Live browser checks covered 1200×900 desktop, 320px reflow, and 600px viewport as a 200%-zoom reflow proxy; direct browser zoom and assistive-technology testing remain unverified.
+- [x] Visual design follows `docs/DESIGN_SYSTEM.md`: no decorative card borders, including left/right edge accents; preserve spacing and prevent overlap. Evidence: recorded live responsive sweeps checked borderless surfaces, spacing, and no overlap at 320px and ultrawide widths.
+- [x] Upload → relevant concepts → source-grounded explanation → quiz works for both technical prose and a STEM source, showing neither flow is hard-coded as the only subject. Evidence: live ICT and Physics scan journeys completed their source-linked teaching and practice loops.
+- [ ] Record a repeatable demo in which a learner asks a follow-up tutor question in both domains. The live runs established tutor and practice journeys, but the log does not verify a post-practice tutor follow-up in both.
+- [x] Prepare a clean, demo-ready clock study path whose recommended first lesson is about reading clocks, not the generic concept left by the failed baseline. Preserve the original upload and historical learner records; isolate or rebuild the demo path rather than deleting learner history. **Verified live on 2026-10-12:** space 47 contains two clock concepts, the recommended next lesson is “Reading times from analog clocks,” and no generic concept appears in the path. No learner records or uploaded materials were removed. Rubric rescored below. This path cleanup does not itself pass the overall demo rubric.
+- [x] Standalone generated questions are kept in the authenticated learner's session and user-scoped; this slice does not touch source pages, tutor messages, or uploaded text.
+
+## Demo rubric (score each 0–2)
+
+| Dimension | 0: Fails | 1: Partial | 2: Demonstrated |
+| --- | --- | --- | --- |
+| Material relevance | Unrelated content enters the guide, or relevance is guessed from labels | Relevant content is mostly selected, but uncertainty/source scope is unclear | Relevant passages are selected with evidence; unrelated passages stay out; uncertain cases ask for confirmation |
+| STEM extraction and traceability | Clock/page interpretation is wrong or untraceable | Mostly correct, but provenance or uncertainty is missing | Correctly explained from Mathpix-backed page evidence with page/source location and uncertainty surfaced |
+| Clock visual correctness | Hands do not match the intended time | One tested time is correct, but edge cases or validation are absent | Multiple times, half-hour transitions, and hand geometry validate against the expected answer |
+| Teaching quality | Gives answer without teaching or useful feedback | Explains the answer but hints/adaptation are weak | Progressive hint, level-appropriate reasoning, meaningful correction, and next-step difficulty are shown |
+| Tutor and language access | No follow-up or read-aloud path | Follow-up works, but language/voice fallback is unclear | Follow-up is source-grounded; chosen-language text and optional controllable read-aloud work or provide a clear fallback |
+| Domain independence | Only one subject or content type works | Second subject/content type is uploaded but incompletely taught | Design-pattern prose and a visual/STEM example both complete source-grounded explanation and practice |
+| Accessibility and usability | Keyboard/mobile flow blocks completion | Main flow works with minor friction | Keyboard-only completion, 320px reflow, 200% zoom, readable content, and no overlapping controls |
+
+**Latest evidence-based score: 10/14 (not yet a demo pass; threshold 12/14).** Material relevance 2, STEM extraction/traceability 1, clock visual correctness 2, teaching quality 2, tutor/language access 1, domain independence 1, accessibility/usability 1. On 2026-10-12, live browser review of space 47 confirmed the recommended next lesson is clock-related, both concepts concern clock reading, six labelled clock drawings cite page 1 and are described as recreations, and the learner's latest practice shows 8/8 with provisional written feedback of 5/5. This confirms the clean path without altering historical records. Score remains 1 for STEM provenance because Mathpix did not read clock-hand values; the separate local reader proposed values that the learner checked against the source. Domain independence remains 1 because ICT and Physics journeys exist, but the required design-pattern prose journey is not evidenced. Tutor/language access and usability remain 1 because audio in quiz/exam, non-English speech fallback, direct 200% zoom, and assistive-technology completion are unverified. No voice or OCR accuracy is inferred beyond the evidence above.
+
+## Engineering checklist
+
+- [ ] Read `docs/ARCHITECTURE.md`, `docs/AI_CONTRACTS.md`, `docs/LOW_BANDWIDTH.md`, `docs/DESIGN_SYSTEM.md`, and current provider documentation before implementation.
+- [ ] Add validated, versioned contracts for source-page/section relevance and clock interpretation; reject unknown page/chunk identifiers and malformed times.
+- [x] Keep classification, OCR, visual interpretation, generated teaching content, and answer scoring as separate stages with separate provenance.
+- [x] Store only the minimum structured clock state needed to reproduce a generated question; never expose its answer key before submission.
+- [ ] Add deterministic tests for domain-independent concepts and quizzes, hand geometry, time boundaries (12/1, 3/4, 5:59/6:00), source scoping, unrelated/mixed pages, uncertainty, and generated-question grading. Clock geometry and the 3:15, 5:59, 6:00, and 12:00 cases are tested; broader path/quiz fixtures and the full stated boundary matrix still need to be added.
+- [x] Fake Mathpix and model providers in normal tests. Cover timeout, malformed structured output, missing evidence, and cross-learner authorization failures.
+- [ ] Add accessible browser tests for the clock interaction, follow-up tutor, language selection, keyboard path, and mobile/320px reflow. Live browser checks cover these interactions across separate runs.
+- [ ] Verify read-aloud pause/replay and unavailable-voice fallback, and complete a direct 200% zoom check. A 600px reflow proxy was used previously; it is not equivalent to browser zoom.
+- [x] Preserve Mathpix `confidence` and `confidence_rate` separately; do not use the token-product score as a page-quality percentage. Hold pages with missing or low `confidence_rate` for learner review before concept generation. The default threshold is provisional and needs broader corpus calibration.
+- [ ] Exercise one real Mathpix-backed clock page and one real second-domain STEM source in an isolated demo account; record status, source/page counts, extraction confidence, and test limitations without logging private page contents. A real clock worksheet was tested; it failed to yield hand readings even with a high confidence rate. A second-domain source remains needed.
+- [x] Run formatting, focused and full test suites, and production build; record exact results in `docs/DEVELOPMENT_LOG.md`.
+- [x] Record `git diff --check` results in `docs/DEVELOPMENT_LOG.md`.
+- [ ] Complete the outstanding browser checks listed above and record the results here and in `docs/DEVELOPMENT_LOG.md`.
+- [ ] Verify the demo script can be repeated from a fresh learner account and that no answer keys, provider credentials, or private uploads leak into logs or commits.
+
+## Out of scope
+
+- Voice input or speech recognition.
+- Claiming Mathpix alone determines conceptual relevance or guarantees every clock drawing is interpreted correctly; ambiguity still needs a review path.
+- A fixed school-subject taxonomy or automatic inclusion of every upload in one study path.
+- Production deployment, comprehensive mastery claims, or guaranteeing that every browser/device has a voice for every language.

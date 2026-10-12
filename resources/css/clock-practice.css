@@ -1,0 +1,84 @@
+.clock-practice-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(16rem, .8fr);
+    align-items: start;
+    gap: 1.5rem;
+}
+
+.clock-panel,
+.clock-teaching {
+    min-width: 0;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border-radius: 1rem;
+    background: #fffdf8;
+    box-shadow: 0 8px 30px #32534810;
+}
+
+.clock-panel > * + *,
+.clock-teaching > * + * {
+    margin-block-start: 1rem;
+}
+
+.clock-figure {
+    display: grid;
+    justify-items: center;
+    gap: .5rem;
+    margin: 0;
+}
+
+.practice-clock {
+    display: block;
+    width: min(100%, 24rem);
+    height: auto;
+    overflow: visible;
+}
+
+.clock-face { fill: #fffdf8; stroke: #176b55; stroke-width: 2.5; }
+.clock-tick { stroke: #58706a; stroke-width: 1.1; stroke-linecap: round; }
+.clock-tick-major { stroke: #29463f; stroke-width: 2; }
+.clock-number { fill: #16302b; font: 700 12px ui-sans-serif, system-ui, sans-serif; }
+.clock-hand { stroke-linecap: round; }
+.clock-hand-minute { stroke: #176b55; stroke-width: 3.2; }
+.clock-hand-hour { stroke: #102d27; stroke-width: 5.2; }
+.clock-pin { fill: #a34f2b; }
+
+.clock-figure figcaption,
+.clock-panel .muted,
+.clock-teaching { color: #58706a; }
+
+.clock-answer-form { display: grid; gap: .85rem; max-width: 32rem; }
+.clock-answer-form button { justify-self: start; }
+.clock-choice-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+.clock-choice-group legend { margin-block-end: .65rem; font-weight: 800; }
+.clock-choice-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
+.clock-time-option { position: relative; display: grid; min-width: 0; min-height: 3rem; place-items: center; padding: .7rem .5rem; border-radius: .65rem; background: #f5f0e8; color: #16302b; cursor: pointer; font-size: 1rem; font-weight: 800; letter-spacing: 0; }
+.clock-time-option input { position: absolute; width: 1px; height: 1px; min-height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.clock-time-option:hover { background: #edf3ef; }
+.clock-time-option:focus-within { outline: 3px solid #176b55; outline-offset: 2px; }
+.clock-time-option:has(input:checked) { background: #e1f1e5; box-shadow: inset 0 0 0 2px #176b55; }
+.clock-time-option:has(input[aria-invalid="true"]) { color: #8c2d24; }
+.clock-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; }
+.clock-secondary { background: #e8f2e6; color: #16302b; }
+.clock-secondary:hover { background: #d9ead3; color: #102d27; }
+.clock-feedback,
+.clock-hint { padding: 1rem; border-radius: .75rem; background: #e8f2e6; }
+.clock-feedback > * + * { margin-block-start: .65rem; }
+.clock-field-error { color: #8c2d24; font-weight: 700; }
+.clock-next { margin-block-start: 1.5rem; }
+.clock-teaching h2 { color: #102d27; }
+.clock-teaching ol { padding-inline-start: 1.4rem; }
+.clock-teaching li + li { margin-block-start: .5rem; }
+.clock-read-aloud { display: grid; gap: .75rem; margin-block-start: 1rem; padding-block-start: 1rem; }
+.clock-read-aloud label { max-width: 26rem; }
+.clock-read-aloud button:disabled { cursor: not-allowed; opacity: .6; }
+.clock-read-aloud [data-speech-status] { min-height: 1.5em; }
+
+@media (max-width: 760px) {
+    .clock-practice-layout { grid-template-columns: minmax(0, 1fr); }
+    .clock-panel, .clock-teaching { padding: 1.15rem; }
+    .clock-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

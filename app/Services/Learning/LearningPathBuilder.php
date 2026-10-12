@@ -10,8 +10,18 @@ final class LearningPathBuilder
 {
     public function build(LearningSpace $space): LearningPath
     {
-        $concepts = $space->concepts()->with('prerequisites:id')->orderBy('name')->orderBy('id')->get();
-        $remaining = $concepts->mapWithKeys(fn ($concept) => [$concept->id => $concept->prerequisites->pluck('id')->all()])->all();
+        $concepts = $space->concepts()
+            ->whereHas('sources', fn ($query) => $query->where('relevance_status', 'related'))
+            ->with('prerequisites:id')
+            ->withMin('sources', 'page')
+            ->orderBy('sources_min_page')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+        $eligibleIds = $concepts->modelKeys();
+        $remaining = $concepts->mapWithKeys(fn ($concept) => [
+            $concept->id => array_values(array_intersect($concept->prerequisites->pluck('id')->all(), $eligibleIds)),
+        ])->all();
         $ordered = [];
 
         while ($remaining !== []) {
@@ -47,6 +57,6 @@ final class LearningPathBuilder
 
     private function loadPath(LearningPath $path): LearningPath
     {
-        return $path->load(['items.concept' => fn ($query) => $query->with('prerequisites')->withExists('sources')]);
+        return $path->load(['items.concept' => fn ($query) => $query->with('prerequisites')->withExists('sources')->with(['sources' => fn ($sources) => $sources->where('relevance_status', 'related')->with('material')])]);
     }
 }

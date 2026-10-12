@@ -9,8 +9,21 @@ use Illuminate\Support\Collection;
 final class ChunkRetriever
 {
     /** @return Collection<int, MaterialChunk> */
-    public function retrieve(LearningSpace $space, string $question, int $limit = 6): Collection
+    public function retrieve(LearningSpace $space, string $question, int $limit = 6, ?int $conceptId = null): Collection
     {
+        if ($conceptId !== null) {
+            $concept = $space->concepts()->whereKey($conceptId)->firstOrFail();
+
+            return $concept->sources()
+                ->where('relevance_status', 'related')
+                ->whereHas('material', fn ($query) => $query->where('learning_space_id', $space->id)->where('status', 'ready'))
+                ->with('material:id,learning_space_id,title')
+                ->orderBy('page')
+                ->orderBy('material_chunks.id')
+                ->limit(max(1, min($limit, 10)))
+                ->get();
+        }
+
         $terms = collect(preg_split('/[^\pL\pN]+/u', mb_strtolower($question)))
             ->filter(fn ($term) => mb_strlen($term) >= 3)->unique()->values();
         if ($terms->isEmpty()) {
@@ -18,6 +31,7 @@ final class ChunkRetriever
         }
 
         return MaterialChunk::query()
+            ->where('relevance_status', 'related')
             ->whereHas('material', fn ($query) => $query->where('learning_space_id', $space->id)->where('status', 'ready'))
             ->with('material:id,learning_space_id,title')
             ->get()

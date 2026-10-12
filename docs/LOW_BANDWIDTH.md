@@ -28,7 +28,10 @@ Offline after explicit download: app shell, text lessons, source excerpts, exist
 | --- | --- | --- | --- | --- |
 | Cold online load | To measure | To measure | To measure | Pending |
 | Warm study-pack navigation | To measure | To measure | To measure | Pending |
-| Offline reload/read | Offline | To measure | To measure | Pending |
+| Offline reload/read | Chrome 154 CDP offline emulation after pack download | 20 KB pack saved before going offline; reload transfer not separately measured | Not measured | Existing IndexedDB pack reopened with network offline. The study path and section heading rendered; raw `\\section*{...}` markup was not shown. The browser's automatic favicon request failed because the workspace favicon is empty. This pack had no saved quizzes or tutor explanations. |
 | Queued quiz and reconnect | Offline then online | To measure | To measure | Pending |
 
 Throttling demonstrates behavior under a controlled simulated connection. It does not establish field performance on every basic device or network.
+
+## Mathematical materials
+KaTeX and its fonts are bundled with the Vite app assets. Mark learner-facing math text for local LaTeX rendering and verify a downloaded LaTeX explanation renders after an offline reload without CDN requests.

@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LearningSpace extends Model
 {
+    public const TUTOR_LANGUAGES = [
+        'en' => 'English',
+        'ha' => 'Hausa',
+        'yo' => 'Yoruba',
+        'ig' => 'Igbo',
+    ];
+
     public const PURPOSES = [
         'exam_prep' => 'Prepare for an exam',
         'learn_topic' => 'Learn a topic',

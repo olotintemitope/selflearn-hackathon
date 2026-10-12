@@ -1,9 +1,11 @@
-<x-layouts.app title="Study spaces — SelfLearn">
+<x-layouts.app title="Study spaces: SelfLearn">
     <header class="hero">
         <p class="eyebrow">Study from everything you bring</p>
         <h1>One goal. All your materials.</h1>
         <p>Make a study space for an exam, a course, or a topic you want to learn. Add notes, syllabi, past papers, and references whenever you have them.</p>
     </header>
+
+    <p><a href="{{ route('clock-practice.show') }}">Try standalone clock-reading practice (demo)</a></p>
 
     <section class="card stack" aria-labelledby="new-space-heading">
         <div><p class="eyebrow">Start with your goal</p><h2 id="new-space-heading">Create a study space</h2><p class="muted">A study space can hold many materials. You can add more at any time.</p></div>

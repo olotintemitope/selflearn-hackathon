@@ -1,4 +1,4 @@
-<x-layouts.app :title="$material->title.' — SelfLearn'">
+<x-layouts.app :title="$material->title.' | SelfLearn'">
     <a href="{{ route('materials.index') }}#space-{{ $material->learning_space_id }}-materials">← Back to this study space</a>
     <section class="hero compact">
         <p class="eyebrow">{{ $material->learningSpace->title }} · {{ $material->roleLabel() }}</p>
@@ -8,23 +8,248 @@
     @if (in_array($material->status, ['pending', 'processing']))
         <div class="card" role="status" aria-live="polite">
             <h2>Preparing your study guide</h2>
-            <p>We’re reading your material and organizing its key concepts. This page will update automatically when it’s ready.</p>
-            <p class="muted">You can safely leave this page and return later.</p>
+            @php($extractionProgress = $material->metadata['extraction_progress'] ?? null)
+            @php($processingStage = $material->metadata['processing_stage'] ?? 'extraction')
+            @php($stagePosition = ['extraction' => 0, 'relevance' => 1, 'concepts' => 2][$processingStage] ?? 0)
+            @if ($processingStage === 'extraction' && is_array($extractionProgress) && ($extractionProgress['total_pages'] ?? 0) > 0)
+                @php($completedPages = min($extractionProgress['total_pages'], max(0, $extractionProgress['next_page'] - 1)))
+                <p>Reading your material, page {{ $completedPages }} of {{ $extractionProgress['total_pages'] }}. Page extraction is in progress.</p>
+                <progress aria-label="Pages read" value="{{ $completedPages }}" max="{{ $extractionProgress['total_pages'] }}">{{ $completedPages }} of {{ $extractionProgress['total_pages'] }}</progress>
+            @elseif ($processingStage === 'extraction')
+                <p>Reading your material. We’ll confirm when all pages have been extracted.</p>
+            @elseif ($processingStage === 'relevance')
+                <p>All pages have been extracted. Now we’re checking which pages match your learning goal.</p>
+            @else
+                <p>Page extraction and relevance checks are complete. Now we’re building your study guide from the matching pages.</p>
+            @endif
+            <ol class="processing-steps" aria-label="Upload progress">
+                @foreach ([['Pages extracted', 0], ['Pages checked against your goal', 1], ['Study guide created', 2]] as [$stepLabel, $stepPosition])
+                    @php($stepDone = $stagePosition > $stepPosition)
+                    <li @if ($stagePosition === $stepPosition) aria-current="step" @endif>
+                        <span>{{ $stepDone ? 'Complete' : ($stagePosition === $stepPosition ? 'In progress' : 'Next') }}</span>
+                        <strong>{{ $stepLabel }}</strong>
+                    </li>
+                @endforeach
+            </ol>
+            <p class="muted">This page will update automatically. You can safely leave and return later.</p>
         </div>
         <script>window.setTimeout(() => window.location.reload(), 3000);</script>
     @elseif ($material->status === 'failed')
-        <div class="error"><h2>Processing stopped</h2><p>{{ $material->failure_message }}</p><form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form></div>
+        @php($failedStage = $material->metadata['failed_stage'] ?? 'extraction')
+        @php($failedPosition = ['extraction' => 0, 'relevance' => 1, 'concepts' => 2][$failedStage] ?? 0)
+        @php($quotaLimited = str_contains($material->failure_message ?? '', 'insufficient_quota') || str_contains($material->failure_message ?? '', 'credit_balance_exhausted'))
+        <div class="error" role="alert">
+            <h2>{{ $failedStage === 'concepts' ? 'Error generating study guide' : 'We couldn’t finish processing your material' }}</h2>
+            <ol class="processing-steps" aria-label="Completed upload steps">
+                @foreach ([['Pages extracted', 0], ['Pages checked against your goal', 1], ['Study guide created', 2]] as [$stepLabel, $stepPosition])
+                    <li>
+                        <span>{{ $stepPosition < $failedPosition ? 'Complete' : ($stepPosition === $failedPosition ? 'Stopped here' : 'Not started') }}</span>
+                        <strong>{{ $stepLabel }}</strong>
+                    </li>
+                @endforeach
+            </ol>
+            @if ($failedStage === 'concepts')
+                <p>Your pages were extracted and checked against your goal. The problem happened while building the study guide. Your saved pages and relevance checks will be reused if you retry.</p>
+            @elseif ($failedStage === 'relevance')
+                <p>Your pages were extracted. The problem happened while checking which pages match your goal. Your extracted pages will be reused if you retry.</p>
+            @else
+                <p>The problem happened while reading your material. Any pages already saved will be kept for a retry.</p>
+            @endif
+            @if ($quotaLimited)
+                <p>The AI service has reached its usage limit, so it could not create the study guide. Your extracted pages and relevance checks are saved. Try again after the usage limit is resolved.</p>
+            @else
+                <p>{{ $material->failure_message }}</p>
+            @endif
+            <form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form>
+        </div>
     @else
-        @if (($material->metadata['ocr_confidence'] ?? 1) < 0.8)<p class="notice">OCR confidence is low. Compare concepts with the original before studying.</p>@endif
+        @php($relatedPages = $material->chunks->where('relevance_status', 'related'))
+        @php($uncertainPages = $material->chunks->where('relevance_status', 'possibly_related'))
+        @php($separatePages = $material->chunks->where('relevance_status', 'separate'))
+        @php($pendingPages = $material->chunks->where('relevance_status', 'pending'))
+        <section class="card stack" aria-labelledby="material-match-heading">
+            <h2 id="material-match-heading">How this material fits your goal</h2>
+            <p>We compare each extracted page with “{{ $material->learningSpace->goal ?: $material->learningSpace->title }}”. Only pages marked related are used in the study path, tutor, and practice. Your original material and all extracted pages remain available here.</p>
+            <p><strong>{{ $relatedPages->count() }}</strong> related · <strong>{{ $uncertainPages->count() }}</strong> need your review · <strong>{{ $separatePages->count() }}</strong> kept separate · <strong>{{ $pendingPages->count() }}</strong> not checked</p>
+            @if ($relatedPages->isNotEmpty() && ! $hasSourceLinkedConcept)
+                <aside class="notice">
+                    <p>No study concepts were created from these checked pages yet. Your extraction and page decisions are saved.</p>
+                    <form method="POST" action="{{ route('materials.rebuild-guide', $material) }}">@csrf<button class="button-secondary">Build study guide from checked pages</button></form>
+                </aside>
+            @endif
+            @foreach ($relatedPages as $chunk)
+                @php($confirmedClock = $chunk->locator['clock_diagrams'] ?? null)
+                @if (is_array($confirmedClock) && ($confirmedClock['status'] ?? null) === 'learner_confirmed')
+                    <details>
+                        <summary>Learner-confirmed clock readings · Page {{ $chunk->page ?? 'unknown' }}</summary>
+                        <p>These times were checked against the original page.</p>
+                        <ol class="stack">@foreach ($confirmedClock['faces'] as $face)<li>Clock {{ $face['index'] }}: {{ $face['confirmed_time'] }}</li>@endforeach</ol>
+                    </details>
+                @endif
+            @endforeach
+            @if ($pendingPages->isNotEmpty())
+                <div class="stack" aria-label="Pages not yet matched to your goal">
+                    @foreach ($pendingPages as $chunk)
+                        <article class="stack">
+                            <h3>Page {{ $chunk->page ?? 'unknown' }} · Not included yet</h3>
+                            <p>This saved page hasn’t been checked against your goal, so it is not used in your study path, tutor, or practice yet.</p>
+                            <details><summary>Review extracted page text</summary><x-material-extracted-text :content="$chunk->content" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
+                            <form method="POST" action="{{ route('materials.relevance', $material) }}">@csrf
+                                <input type="hidden" name="chunk_id" value="{{ $chunk->id }}"><input type="hidden" name="decision" value="recheck">
+                                <button>Check relevance</button>
+                            </form>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+            @if ($uncertainPages->isNotEmpty())
+                <div class="stack" aria-label="Pages that may relate to your goal">
+                    @foreach ($uncertainPages as $chunk)
+                        <article class="stack">
+                            <h3>Page {{ $chunk->page ?? 'unknown' }} · Not included yet</h3>
+                            @php($reviewReason = (string) $chunk->relevance_reason)
+                            @if (str_contains(mb_strtolower($reviewReason), 'mathpix') || str_contains(mb_strtolower($reviewReason), 'confidence rate'))
+                                <p>We could not tell whether all the words on this page were read clearly. Compare it with the original before including it in your study guide.</p>
+                            @elseif (str_contains(mb_strtolower($reviewReason), 'local clock reader'))
+                                <p>Possible clock times were found on this page. Compare each one with the original and correct them before including this page in your study guide.</p>
+                            @else
+                                <p>{{ $reviewReason }}</p>
+                            @endif
+                            @php($clockAnalysis = $chunk->locator['clock_diagrams'] ?? null)
+                            <details><summary>{{ is_array($clockAnalysis) ? 'Review page text and suggested times' : 'Review page text' }}</summary><x-material-extracted-text :content="($chunk->locator['ocr_content'] ?? $chunk->content)" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
+                            @if (is_array($clockAnalysis) && ! empty($clockAnalysis['faces']))
+                                <form method="POST" action="{{ route('materials.relevance', $material) }}" class="stack">
+                                    @csrf
+                                    <input type="hidden" name="chunk_id" value="{{ $chunk->id }}">
+                                    <fieldset class="stack">
+                                        <legend>Check each clock against the original</legend>
+                                        <p>These suggested times may need correcting. Check each clock against the original before adding the readings to your study guide.</p>
+                                        @foreach ($clockAnalysis['faces'] as $face)
+                                            <label for="clock-reading-{{ $chunk->id }}-{{ $face['index'] }}">Clock {{ $face['index'] }}@if (($face['match_quality'] ?? 'ambiguous') === 'ambiguous') (check carefully)@endif</label>
+                                            <input id="clock-reading-{{ $chunk->id }}-{{ $face['index'] }}" name="clock_readings[{{ $face['index'] }}]" type="time" value="{{ $face['candidate_time'] ?? '' }}" required aria-describedby="clock-review-hint-{{ $chunk->id }}">
+                                        @endforeach
+                                        <p id="clock-review-hint-{{ $chunk->id }}" class="muted">Compare each suggested time with the original worksheet. You can edit the values.</p>
+                                    </fieldset>
+                                    <div class="actions">
+                                        <button name="decision" value="related">Confirm readings and include page</button>
+                                        <button class="button-secondary" name="decision" value="separate">Keep separate</button>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="actions">
+                                    <form method="POST" action="{{ route('materials.relevance', $material) }}">@csrf
+                                        <input type="hidden" name="chunk_id" value="{{ $chunk->id }}"><button name="decision" value="related">Include this page</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('materials.relevance', $material) }}">@csrf
+                                        <input type="hidden" name="chunk_id" value="{{ $chunk->id }}"><button class="button-secondary" name="decision" value="separate">Keep separate</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+            @if ($separatePages->isNotEmpty())
+                <details><summary>View {{ $separatePages->count() }} page(s) kept separate</summary>
+                    @foreach ($separatePages as $chunk)<blockquote><strong>Page {{ $chunk->page ?? 'unknown' }}:</strong> {{ $chunk->relevance_reason }}</blockquote>@endforeach
+                </details>
+            @endif
+        </section>
         @if (! empty($material->metadata['extraction_warnings']))
-            <aside class="notice" aria-labelledby="extraction-warnings-heading"><h2 id="extraction-warnings-heading">Extraction notes</h2><ul>@foreach ($material->metadata['extraction_warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul></aside>
+            <aside class="notice" aria-labelledby="extraction-warnings-heading"><h2 id="extraction-warnings-heading">A few pages may need checking</h2><p>Compare the pages marked for review with your original before studying.</p></aside>
+        @endif
+        @if ($material->role === 'past_paper')
+            <section class="stack" aria-labelledby="past-paper-questions-heading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Past-paper question bank</p>
+                        <h2 id="past-paper-questions-heading">Questions found in this paper</h2>
+                    </div>
+                    <form method="POST" action="{{ route('materials.past-paper-questions.index', $material) }}">
+                        @csrf
+                        <button class="button-secondary">{{ $pastPaperQuestions->isEmpty() ? 'Find questions on this paper' : 'Refresh detected questions' }}</button>
+                    </form>
+                </div>
+                <p>We detect questions from the saved page text without sending the paper to an AI extractor. Each question keeps its extracted wording and page reference. Check it against the original before practice. Detected answer material stays hidden here.</p>
+                @if ($readyPastPaperQuestionCount > 0)
+                    <form method="POST" action="{{ route('past-paper-practice.start', $material) }}" class="paper-practice-start">
+                        @csrf
+                        <div>
+                            <p><strong>{{ $readyPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('clear question', $readyPastPaperQuestionCount) }}</strong> can be practised together. Questions needing review stay out of the session.</p>
+                            <fieldset class="practice-duration">
+                                <legend>Practice timer, not official paper timing</legend>
+                                @foreach ([30, 60, 90] as $minutes)
+                                    <label><input type="radio" name="duration_minutes" value="{{ $minutes }}" @checked($loop->first)> {{ $minutes }} min</label>
+                                @endforeach
+                            </fieldset>
+                            @error('duration_minutes')<p class="error" role="alert">Choose a 30, 60, or 90 minute practice timer.</p>@enderror
+                        </div>
+                        <button>Start exam practice</button>
+                    </form>
+                @endif
+                @error('paper_practice')<p class="error" role="alert">{{ $message }}</p>@enderror
+                @if ($pastPaperQuestions->isEmpty())
+                    <p class="muted">No question list has been built for this upload yet. Finding questions uses the extracted pages already saved for this material.</p>
+                @else
+                    <ol class="stack">
+                        @foreach ($pastPaperQuestions as $question)
+                            <li class="stack">
+                                <div class="section-heading">
+                                    <h3>Question {{ $question->question_number }} · Page {{ $question->page ?? 'unknown' }}</h3>
+                                    @if ($question->marks)
+                                        <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} detected</p>
+                                    @endif
+                                    <span class="status status-{{ $question->review_status === 'ready' ? 'ready' : 'pending' }}">
+                                        {{ $question->review_status === 'ready' ? 'Clear extraction' : 'Needs review' }}
+                                    </span>
+                                </div>
+                                <p class="muted">{{ match ($question->question_type) {
+                                    'single_choice' => 'Single-answer multiple choice',
+                                    'multiple_select' => 'Select multiple answers',
+                                    'true_false' => 'True or false',
+                                    'fill_gap' => 'Fill in the gap',
+                                    default => 'Written or structured response',
+                                } }} · Paper: {{ $material->title }}
+                                    @if ($question->paper_year)
+                                        · Year {{ $question->paper_year }} from upload title or filename
+                                    @endif
+                                    · {{ $question->answer_source === 'not_detected' ? 'No answer key detected' : 'A source response was detected and is kept separate' }}
+                                </p>
+                                @if ($question->review_reason)
+                                    <p class="notice">{{ $question->review_reason }} Compare this wording with the original before using it.</p>
+                                @endif
+                                <blockquote data-render-math>{{ $question->prompt }}</blockquote>
+                                @if ($question->options)
+                                    <ol type="A">
+                                        @foreach ($question->options as $option)
+                                            <li data-render-math>{{ $option['text'] }}</li>
+                                        @endforeach
+                                    </ol>
+                                @endif
+                                <details>
+                                    <summary>Compare with the extracted page text</summary>
+                                    <p><strong>Question transcription</strong></p>
+                                    <blockquote data-render-math>{{ $question->source_text }}</blockquote>
+                                    <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
+                                </details>
+                                @if ($question->review_status === 'ready')
+                                    <a class="button-link" href="{{ route('past-paper-questions.practice', [$material, $question]) }}">Practise this question</a>
+                                @else
+                                    <p class="muted">This question is not available for practice until its wording and structure have been checked.</p>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ol>
+                    <p class="muted">Clear questions can be practised together in paper order with a learner-selected practice timer. This is not an official or proctored exam, and the timer does not represent verified paper timing. Questions needing review stay out.</p>
+                @endif
+            </section>
         @endif
         <section><div class="section-heading"><div><p class="eyebrow">Your next step</p><h2>Source-linked concepts</h2></div><a class="button-link" href="{{ route('study.show', $material->learningSpace) }}">Open study path</a></div><div class="concept-grid">
             @foreach ($material->learningSpace->concepts as $concept)
-                @if ($concept->sources->whereIn('material_id', [$material->id])->isNotEmpty())
-                    <article class="card"><h3>{{ $concept->name }}</h3><p>{{ $concept->description }}</p>
+                @if ($concept->sources->where('relevance_status', 'related')->whereIn('material_id', [$material->id])->isNotEmpty())
+                    <article class="card"><h3>{{ $concept->name }}</h3><p data-render-math>{{ $concept->description }}</p>
                         @if ($concept->prerequisites->isNotEmpty())<p class="muted">Prerequisites: {{ $concept->prerequisites->pluck('name')->join(', ') }}</p>@endif
-                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('material_id', $material->id) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote>@endforeach</details>
+                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote>@endforeach</details>
                     </article>
                 @endif
             @endforeach

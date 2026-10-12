@@ -1,4 +1,4 @@
-<x-layouts.app title="Create account — SelfLearn">
+<x-layouts.app title="Create account: SelfLearn">
     <section class="auth-shell">
         <form method="POST" action="{{ route('register.store') }}" class="card stack">
             @csrf

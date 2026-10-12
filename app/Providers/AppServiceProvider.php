@@ -2,10 +2,16 @@
 
 namespace App\Providers;
 
+use App\Services\Learning\AnswerMarker;
 use App\Services\Learning\ConceptExtractor;
+use App\Services\Learning\LocalMaterialRelevanceClassifier;
+use App\Services\Learning\MaterialRelevanceClassifier;
+use App\Services\Learning\OpenAiAnswerMarker;
 use App\Services\Learning\OpenAiConceptExtractor;
+use App\Services\Learning\OpenAiOpenEndedQuestionGenerator;
 use App\Services\Learning\OpenAiQuizGenerator;
 use App\Services\Learning\OpenAiTutor;
+use App\Services\Learning\OpenEndedQuestionGenerator;
 use App\Services\Learning\QuizGenerator;
 use App\Services\Learning\Tutor;
 use App\Services\Ocr\CloudOcrClient;
@@ -27,8 +33,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CloudOcrClient::class, MathpixOcrClient::class);
         $this->app->bind(OcrClient::class, MaterialExtractionRouter::class);
         $this->app->bind(ConceptExtractor::class, OpenAiConceptExtractor::class);
+        $this->app->bind(MaterialRelevanceClassifier::class, LocalMaterialRelevanceClassifier::class);
         $this->app->bind(Tutor::class, OpenAiTutor::class);
         $this->app->bind(QuizGenerator::class, OpenAiQuizGenerator::class);
+        $this->app->bind(OpenEndedQuestionGenerator::class, OpenAiOpenEndedQuestionGenerator::class);
+        $this->app->bind(AnswerMarker::class, OpenAiAnswerMarker::class);
     }
 
     /**

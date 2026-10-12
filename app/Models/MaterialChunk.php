@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class MaterialChunk extends Model
 {
-    protected $fillable = ['extraction_version', 'content', 'page', 'section', 'locator'];
+    protected $fillable = [
+        'extraction_version', 'content', 'page', 'section', 'locator',
+        'relevance_status', 'relevance_confidence', 'relevance_reason',
+    ];
 
     protected function casts(): array
     {
-        return ['locator' => 'array'];
+        return ['locator' => 'array', 'relevance_confidence' => 'float'];
     }
 
     public function material(): BelongsTo

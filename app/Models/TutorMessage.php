@@ -9,7 +9,8 @@ class TutorMessage extends Model
 {
     protected $fillable = [
         'role', 'content', 'citations', 'supplementary_sections', 'insufficient_evidence',
-        'status', 'failure_message', 'prompt_version',
+        'status', 'failure_message', 'prompt_version', 'concept_id', 'understanding_check',
+        'language',
     ];
 
     protected function casts(): array

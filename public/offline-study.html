@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f0e8">
+    <title>Offline study reader · SelfLearn</title>
+    <link rel="stylesheet" href="/css/offline-study.css">
+</head>
+<body>
+<main class="offline-reader" id="offline-reader" data-offline-reader>
+    <header>
+        <a href="/materials">SelfLearn</a>
+        <p class="eyebrow">Offline study</p>
+        <h1>Your downloaded study packs</h1>
+        <p>These packs are saved only in this browser on this device. Quiz answers can be queued offline and graded after you reconnect.</p>
+        <p class="offline-notice" role="status" data-reader-status aria-live="polite">Loading study packs saved on this device.</p>
+        <div class="offline-sync-controls">
+            <button type="button" data-sync-now>Sync now</button>
+            <p role="status" aria-live="polite" data-sync-status>No answers are waiting to sync.</p>
+        </div>
+    </header>
+    <nav aria-label="Downloaded study packs">
+        <ul class="offline-list" data-pack-list></ul>
+    </nav>
+    <div data-pack-content></div>
+</main>
+<script defer src="/js/offline-study.js"></script>
+</body>
+</html>

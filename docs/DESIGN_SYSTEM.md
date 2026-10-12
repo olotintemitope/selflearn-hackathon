@@ -12,6 +12,13 @@ SelfLearn should feel like a calm, trustworthy study desk rather than a generic 
 - Prefer clear states and plain language over decorative UI.
 - Do not add runtime font, icon, or image CDN dependencies. The offline shell must remain self-contained.
 
+### Learner-facing copy
+
+- Write for learners and the people supporting them, not developers. Use short, familiar words and explain what happened or what to do next.
+- Keep implementation details out of the interface. Do not use terms such as cache, OCR, API, endpoint, model, token, queue, worker, or provider in learner-facing text. Describe the benefit or action in plain language instead.
+- Keep necessary AI and privacy notices concise and understandable. Explain what the learner selected and what the app does with it, without implementation detail.
+- Do not use em dash punctuation in learner-facing or generated text.
+
 ## Typography
 
 ### Families
@@ -61,6 +68,9 @@ Maintain readable contrast. Do not communicate status by color alone: pair color
 
 Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2rem`, `3rem`, and `5rem` steps.
 
+- Use at least `1.5rem` between separate question surfaces, `1.25rem` between a prompt, its source context, and its answers, and `0.75rem` between answer options. Keep at least `1.5rem` between the final question and the primary submit button.
+- Do not use em dash punctuation in learner-facing or generated text. Prefer a period, colon, comma, or parentheses.
+
 - Page content is capped at `70rem` with at least `1rem` side gutters.
 - Reading and hero copy should not exceed about `50rem`; supporting prose should stay near `42rem`.
 - Authentication forms are single-purpose and capped at `31rem`.
@@ -70,12 +80,13 @@ Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2re
 - Adjacent page regions retain at least `1.5rem` separation; content must remain in normal document flow and never overlap.
 - Flexible action and metadata rows wrap when space is limited. Text may wrap but must not be clipped or force horizontal scrolling.
 - At 320 CSS pixels and 200% zoom, controls, cards, headings, status messages, and source evidence retain readable spacing and usable padding.
+- The shared container and header grow at 1440px and 2560px breakpoints, with a bounded maximum width for readable line lengths on 4K screens. Core learner pages must be checked from 320px through 3840px, not only at one mobile and one desktop width.
 
 ## Components
 
 ### Cards
 
-Cards use surface color, spacing, radius, and restrained shadow for grouping. Never add a border as card decoration. Borders remain appropriate when they communicate meaning or interaction, such as an alert state, form control, table division, or focus indicator.
+Cards use surface color, spacing, radius, and restrained shadow for grouping. Never add a border as card decoration. Do not use decorative left- or right-edge rules on cards, notices, errors, messages, or source excerpts; use surface colors, semantic labels, spacing, and restrained shadows instead. Borders remain appropriate for controls and focus indicators where they communicate interaction.
 
 ### Asynchronous status
 
@@ -89,7 +100,7 @@ Describe the learner outcome in plain language, such as “Preparing your study 
 
 ### Header
 
-Use the serif SelfLearn wordmark on the left and one compact session action on the right. Keep the header quiet so learner content remains dominant.
+Use the serif SelfLearn wordmark followed by a small green robot icon on the left and one compact session action on the right. Keep the icon decorative and hidden from assistive technology so the linked brand is announced once. Keep the header quiet so learner content remains dominant.
 
 ### Hero
 
@@ -104,17 +115,31 @@ Order content as eyebrow → `h1` → concise lead. Use a display-sized title on
 - Put one primary action at the end of the form and a reciprocal text link below it.
 - Show validation errors together near the top and associate field-specific errors when forms become more complex.
 
+### Practice questions
+
+Use native `fieldset`, `legend`, and labelled radio inputs for multiple-choice questions. Put the question surface on a normal-flow parent around the fieldset so browser legend rendering cannot paint outside the visible surface. Give the prompt, source context, options, each question, and the submit action clear separation; give each answer a generous click/touch area and clear hover, focus, and selected states without replacing the native control. Keep option labels easy to scan and preserve a strong prompt-to-answer hierarchy. Name the exact source material and page beside every question. Label supplementary questions as going beyond the learner's material and explain that they use standard subject knowledge to explore the topic further. Long prompts must remain inside the question surface and reflow at 320px.
+
+Render delimited LaTeX in learner-facing explanations, tutor responses, and study concepts with the locally bundled KaTeX assets. Keep delimiters in generated content as `\(...\)` inline or `\[...\]` display math. Do not interpret arbitrary unmarked prose as formula source. Preserve MathML output for assistive technology and contain long display equations on narrow screens.
+
+After submission, show the correct option, a short explanation, and an ordered worked solution for each practice question. Quantitative solutions make the formula, substitution, units, and final result easy to follow. Keep answer keys, solution steps, and written model answers hidden before submission. Use a borderless, padded solution section with clear step spacing.
+
 ### Buttons and links
 
 Use filled green buttons for the primary action. Use normal underlined text links for navigation and evidence access. Avoid multiple equally prominent buttons in one region.
 
 ### Status and feedback
 
-Use explicit `pending`, `processing`, `ready`, and `failed` labels. Notices use a gold left border; errors use a red left border and actionable recovery copy. Status messages should use appropriate live-region semantics.
+Use explicit `pending`, `processing`, `ready`, and `failed` labels. Use distinct, accessible surface colors and actionable recovery copy for notices and errors, never decorative left- or right-edge rules. Status messages should use appropriate live-region semantics.
+
+### Study path and tutor
+
+On wide screens, keep the prerequisite-first path in the main column and the grounded tutor in a right-hand chat panel. Keep the panel in normal page flow with a sticky desktop position only when it does not obscure content; make the conversation area independently scrollable. At tablet and mobile widths, stack the tutor below the path, remove sticky positioning, and preserve readable spacing and keyboard order.
+
+Tutor answers support safe Markdown for emphasis, ordered and unordered lists, blockquotes, and code. Render through the shared learner Markdown component; strip raw HTML and disallow unsafe link schemes. Keep generous line height, list indentation, and spacing between adjacent blocks so longer answers remain readable in the chat panel without horizontal overflow. When a “Recommended next” eyebrow precedes actions, keep at least `1rem` of vertical separation so the label does not crowd the buttons.
 
 ### Evidence
 
-Source excerpts use a blockquote-like paper inset with a gold rule and an exact locator such as page or section. Generated explanation and supplementary knowledge must have separate headings and must not visually merge with quoted evidence.
+Source excerpts use a blockquote-like paper inset with a distinct surface and an exact locator such as page or section. Do not add a left- or right-edge rule. Generated explanation and supplementary knowledge must have separate headings and must not visually merge with quoted evidence.
 
 ## Content rules
 

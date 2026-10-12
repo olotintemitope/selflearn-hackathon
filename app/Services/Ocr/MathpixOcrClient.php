@@ -29,6 +29,7 @@ final class MathpixOcrClient implements CloudOcrClient
         $response = $this->client()->post(config('services.mathpix.image_endpoint'), [
             'src' => sprintf('data:%s;base64,%s', $mimeType, base64_encode($bytes)),
             'formats' => ['text'],
+            'enable_document_layout' => true,
             'include_line_data' => true,
             'metadata' => ['improve_mathpix' => false],
         ]);
@@ -38,12 +39,16 @@ final class MathpixOcrClient implements CloudOcrClient
         if ($text === '') {
             throw new OcrException('Mathpix returned no readable text.');
         }
+        $confidence = is_numeric($response->json('confidence')) ? (float) $response->json('confidence') : null;
+        $confidenceRate = is_numeric($response->json('confidence_rate')) ? (float) $response->json('confidence_rate') : null;
 
         return new OcrResult(
-            [['page' => 1, 'content' => $text, 'extractor' => 'mathpix', 'warnings' => []]],
-            is_numeric($response->json('confidence')) ? (float) $response->json('confidence') : null,
+            [['page' => 1, 'content' => $text, 'extractor' => 'mathpix', 'warnings' => [], 'confidence' => $confidence, 'confidence_rate' => $confidenceRate]],
+            $confidence,
             $response->json('request_id'),
             'mathpix',
+            [],
+            $confidenceRate,
         );
     }
 
@@ -63,7 +68,10 @@ final class MathpixOcrClient implements CloudOcrClient
             throw new OcrException('Mathpix did not return a document identifier.');
         }
 
-        for ($attempt = 0; $attempt < 10; $attempt++) {
+        $maxPollAttempts = max(1, min(120, (int) config('services.mathpix.pdf_max_poll_attempts', 45)));
+        $pollIntervalMilliseconds = max(0, min(5000, (int) config('services.mathpix.pdf_poll_interval_ms', 1000)));
+
+        for ($attempt = 0; $attempt < $maxPollAttempts; $attempt++) {
             $status = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId);
             $this->assertSuccessful($status);
             if ($status->json('status') === 'completed') {
@@ -75,7 +83,9 @@ final class MathpixOcrClient implements CloudOcrClient
             if ($status->json('status') === 'error') {
                 throw new OcrException('Mathpix could not process this PDF.');
             }
-            usleep(250_000);
+            if ($attempt + 1 < $maxPollAttempts && $pollIntervalMilliseconds > 0) {
+                usleep($pollIntervalMilliseconds * 1000);
+            }
         }
 
         throw new OcrException('Mathpix PDF processing timed out. Please retry.');

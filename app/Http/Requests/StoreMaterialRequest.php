@@ -30,7 +30,7 @@ class StoreMaterialRequest extends FormRequest
             'learning_space_id' => ['required', 'integer', 'exists:learning_spaces,id'],
             'title' => ['required', 'string', 'max:150'],
             'role' => ['required', Rule::in(array_keys(Material::ROLES))],
-            'material' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'material' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:51200'],
         ];
     }
 }
