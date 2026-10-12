@@ -6,6 +6,10 @@ final class MaterialExtractionRouter implements BatchOcrClient
 {
     private const MIN_READABLE_CHARACTERS = 20;
 
+    private const MATHPIX_IMAGE_MAX_BASE64_BYTES = 1_999_000;
+
+    private const PDF_MATHPIX_RENDER_DENSITIES = [220, 200, 180, 160];
+
     private ClockDiagramAnalyzer $clockDiagrams;
 
     public function __construct(
@@ -220,21 +224,13 @@ final class MaterialExtractionRouter implements BatchOcrClient
     /** @return array{page:int, content:string, extractor:string, warnings:list<string>} */
     private function extractPdfPage(string $pdfPath, int $pageNumber, ?string $warning = null): array
     {
-        $image = $this->processes->run([
-            config('services.extraction.magick_binary', 'magick'), '-density', '300',
-            $pdfPath.'['.($pageNumber - 1).']', '-background', 'white', '-alpha', 'remove', 'png:-',
-        ], null, config('services.extraction.process_timeout', 30));
-
-        if (! $image->successful || $image->output === '') {
-            throw new OcrException('Could not rasterize PDF page '.$pageNumber.' for Mathpix OCR.');
-        }
-
-        $cloud = $this->cloud->extract($image->output, 'image/png');
+        $imageBytes = $this->renderPdfPageForMathpix($pdfPath, $pageNumber);
+        $cloud = $this->cloud->extract($imageBytes, 'image/png');
         $content = trim((string) ($cloud->pages[0]['content'] ?? ''));
         if ($content === '') {
             throw new OcrException('Mathpix returned no readable text for PDF page '.$pageNumber.'.');
         }
-        $clockAnalysis = $this->clockDiagrams->analyze($image->output);
+        $clockAnalysis = $this->clockDiagrams->analyze($imageBytes);
         $warnings = [$warning ?? 'Page '.$pageNumber.' was rasterized and processed by Mathpix for STEM-aware extraction.'];
         if ($clockAnalysis !== null) {
             $warnings[] = 'A local clock reader found candidate times. Check or correct them against the original before including this page in your study guide.';
@@ -252,6 +248,35 @@ final class MaterialExtractionRouter implements BatchOcrClient
         }
 
         return $page;
+    }
+
+    private function renderPdfPageForMathpix(string $pdfPath, int $pageNumber): string
+    {
+        foreach (self::PDF_MATHPIX_RENDER_DENSITIES as $density) {
+            $image = $this->processes->run([
+                config('services.extraction.magick_binary', 'magick'), '-density', (string) $density,
+                $pdfPath.'['.($pageNumber - 1).']', '-background', 'white', '-alpha', 'remove',
+                '-colorspace', 'Gray', '-depth', '8', '-define', 'png:compression-level=9', 'png:-',
+            ], null, config('services.extraction.process_timeout', 30));
+
+            if (! $image->successful || $image->output === '') {
+                throw new OcrException('Could not rasterize PDF page '.$pageNumber.' for image processing.');
+            }
+
+            if ($this->fitsMathpixImageLimit($image->output)) {
+                return $image->output;
+            }
+        }
+
+        throw new OcrException('Could not prepare PDF page '.$pageNumber.' within the supported image size.');
+    }
+
+    private function fitsMathpixImageLimit(string $imageBytes): bool
+    {
+        $dataUriPrefixBytes = strlen('data:image/png;base64,');
+        $base64Bytes = 4 * intdiv(strlen($imageBytes) + 2, 3);
+
+        return $dataUriPrefixBytes + $base64Bytes <= self::MATHPIX_IMAGE_MAX_BASE64_BYTES;
     }
 
     private function cloudFallback(string $bytes, string $mimeType, string $warning, ?int $firstPage = null, ?int $lastPage = null): OcrResult

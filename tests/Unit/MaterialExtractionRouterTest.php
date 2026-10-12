@@ -217,6 +217,75 @@ class MaterialExtractionRouterTest extends TestCase
         $this->assertSame(['image/png'], $cloud->mimeTypes);
     }
 
+    public function test_pdf_mathpix_page_uses_bounded_grayscale_220_dpi_png_and_keeps_page_number(): void
+    {
+        $text = 'Calculate the velocity using the formula distance divided by time for the moving object.';
+        $runner = new QueuedProcessRunner([
+            new ProcessResult(true, 'Pages: 1'), new ProcessResult(true, $text."\f"),
+            new ProcessResult(true, 'Page 1 size: 612 x 792 pts'),
+            new ProcessResult(true, "page num type width height color comp bpc enc interp object ID x-ppi y-ppi size ratio\n---"),
+            new ProcessResult(true, str_repeat('x', 1_493_629)),
+        ]);
+        $cloud = new FakeCloudOcr(new OcrResult([['page' => 1, 'content' => 'Mathpix page text.']], .98, 'physics-page', 'mathpix'));
+
+        $result = (new MaterialExtractionRouter($runner, $cloud))->extract('%PDF physics', 'application/pdf');
+
+        $this->assertSame(['-density', '220'], array_slice($runner->commands[4], 1, 2));
+        $this->assertContains('-colorspace', $runner->commands[4]);
+        $this->assertSame('Gray', $runner->commands[4][array_search('-colorspace', $runner->commands[4], true) + 1]);
+        $this->assertSame('8', $runner->commands[4][array_search('-depth', $runner->commands[4], true) + 1]);
+        $this->assertContains('png:compression-level=9', $runner->commands[4]);
+        $this->assertSame([1], array_column($result->pages, 'page'));
+        $this->assertSame('Mathpix page text.', $result->pages[0]['content']);
+        $this->assertSame('physics-page', $result->pages[0]['provider_request_id']);
+        $this->assertSame([1_493_629], $cloud->inputByteLengths);
+    }
+
+    public function test_pdf_mathpix_page_retries_at_lower_density_when_base64_payload_is_too_large(): void
+    {
+        $text = 'Calculate the velocity using the formula distance divided by time for the moving object.';
+        $runner = new QueuedProcessRunner([
+            new ProcessResult(true, 'Pages: 1'), new ProcessResult(true, $text."\f"),
+            new ProcessResult(true, 'Page 1 size: 612 x 792 pts'),
+            new ProcessResult(true, "page num type width height color comp bpc enc interp object ID x-ppi y-ppi size ratio\n---"),
+            new ProcessResult(true, str_repeat('x', 1_500_000)),
+            new ProcessResult(true, 'bounded-page-image'),
+        ]);
+        $cloud = new FakeCloudOcr(new OcrResult([['page' => 1, 'content' => 'Mathpix page text.']], .98, 'physics-page', 'mathpix'));
+
+        $result = (new MaterialExtractionRouter($runner, $cloud))->extract('%PDF physics', 'application/pdf');
+
+        $this->assertSame(['220', '200'], array_map(
+            fn (array $command): string => $command[array_search('-density', $command, true) + 1],
+            array_slice($runner->commands, 4),
+        ));
+        $this->assertSame([strlen('bounded-page-image')], $cloud->inputByteLengths);
+        $this->assertSame('Mathpix page text.', $result->pages[0]['content']);
+        $this->assertSame([1], array_column($result->pages, 'page'));
+    }
+
+    public function test_pdf_mathpix_page_is_not_uploaded_when_every_density_exceeds_payload_limit(): void
+    {
+        $text = 'Calculate the velocity using the formula distance divided by time for the moving object.';
+        $oversized = new ProcessResult(true, str_repeat('x', 1_500_000));
+        $runner = new QueuedProcessRunner([
+            new ProcessResult(true, 'Pages: 1'), new ProcessResult(true, $text."\f"),
+            new ProcessResult(true, 'Page 1 size: 612 x 792 pts'),
+            new ProcessResult(true, "page num type width height color comp bpc enc interp object ID x-ppi y-ppi size ratio\n---"),
+            $oversized, $oversized, $oversized, $oversized,
+        ]);
+        $cloud = new FakeCloudOcr;
+
+        try {
+            (new MaterialExtractionRouter($runner, $cloud))->extract('%PDF physics', 'application/pdf');
+            $this->fail('Expected an oversized raster to be rejected.');
+        } catch (OcrException $exception) {
+            $this->assertSame('Could not prepare PDF page 1 within the supported image size.', $exception->getMessage());
+            $this->assertSame(8, count($runner->commands));
+            $this->assertSame(0, $cloud->calls);
+        }
+    }
+
     public function test_physics_concept_phrase_routes_to_mathpix(): void
     {
         $text = 'Explain the law of conservation of energy as a pendulum swings from one side to the other.';
@@ -454,12 +523,15 @@ final class FakeCloudOcr implements CloudOcrClient
 
     public array $mimeTypes = [];
 
+    public array $inputByteLengths = [];
+
     public function __construct(private ?OcrResult $result = null) {}
 
     public function extract(string $bytes, string $mimeType): OcrResult
     {
         $this->calls++;
         $this->mimeTypes[] = $mimeType;
+        $this->inputByteLengths[] = strlen($bytes);
 
         return $this->result ?? new OcrResult([['page' => 1, 'content' => 'Cloud text']], null, 'request', 'mathpix');
     }
