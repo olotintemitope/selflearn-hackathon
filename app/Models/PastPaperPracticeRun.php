@@ -11,11 +11,11 @@ class PastPaperPracticeRun extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['material_id', 'user_id', 'question_ids', 'started_at', 'duration_minutes', 'expires_at', 'submitted_at'];
+    protected $fillable = ['material_id', 'selected_material_ids', 'user_id', 'question_ids', 'started_at', 'duration_minutes', 'expires_at', 'submitted_at'];
 
     protected function casts(): array
     {
-        return ['question_ids' => 'array', 'started_at' => 'datetime', 'expires_at' => 'datetime', 'submitted_at' => 'datetime'];
+        return ['question_ids' => 'array', 'selected_material_ids' => 'array', 'started_at' => 'datetime', 'expires_at' => 'datetime', 'submitted_at' => 'datetime'];
     }
 
     public function material(): BelongsTo

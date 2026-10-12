@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMaterialRequest;
 use App\Jobs\ProcessMaterial;
 use App\Models\Material;
+use App\Models\PastPaperQuestion;
 use App\Services\Learning\PastPaperQuestionIndexer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -45,7 +47,7 @@ class MaterialController extends Controller
         $pastPaperQuestions = $material->role === 'past_paper' && $material->status === 'ready'
             ? $material->pastPaperQuestions()->where('extraction_version', $material->extraction_version)->orderBy('page')->orderBy('question_number')->get()
             : collect();
-        $readyPastPaperQuestionCount = $pastPaperQuestions->where('review_status', 'ready')->count();
+        $readyPastPaperQuestionCount = $pastPaperQuestions->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)->count();
         $hasSourceLinkedConcept = $material->learningSpace->concepts()
             ->whereHas('sources', fn ($query) => $query->where('material_chunks.material_id', $material->id)
                 ->where('material_chunks.relevance_status', 'related'))
@@ -65,6 +67,52 @@ class MaterialController extends Controller
             : 'No clear question boundaries were found. The original and extracted pages are still available; nothing was turned into a question.';
 
         return back()->with('status', $message);
+    }
+
+    public function reviewPastPaperQuestion(Request $request, Material $material, PastPaperQuestion $question)
+    {
+        $this->authorize('update', $material);
+        abort_unless($material->status === 'ready' && $material->role === 'past_paper', 409);
+        abort_unless($question->material_id === $material->id
+            && $question->extraction_version === $material->extraction_version
+            && $question->review_status === 'needs_review', 404);
+
+        $validated = $request->validate([
+            'prompt' => ['required', 'string', 'min:8', 'max:10000'],
+            'question_type' => ['required', 'in:single_choice,multiple_select,true_false,fill_gap,structured_response'],
+            'options' => ['sometimes', 'array', 'max:8'],
+            'options.*' => ['nullable', 'string', 'max:2000'],
+        ]);
+        $choiceTypes = ['single_choice', 'multiple_select', 'true_false'];
+        $options = collect(range('A', 'H'))
+            ->map(fn (string $id) => ['id' => $id, 'text' => trim((string) ($validated['options'][$id] ?? ''))])
+            ->filter(fn (array $option) => $option['text'] !== '')
+            ->values();
+        if (in_array($validated['question_type'], $choiceTypes, true) && $options->count() < 2) {
+            return back()->withErrors(['options' => 'Add at least two answer choices before including this question.'])->withInput();
+        }
+
+        DB::transaction(function () use ($material, $question, $validated, $choiceTypes, $options): void {
+            $lockedMaterial = Material::query()->whereKey($material->id)->lockForUpdate()->firstOrFail();
+            $candidate = $lockedMaterial->pastPaperQuestions()->whereKey($question->id)->lockForUpdate()->firstOrFail();
+            abort_unless($lockedMaterial->status === 'ready'
+                && $lockedMaterial->role === 'past_paper'
+                && $candidate->extraction_version === $lockedMaterial->extraction_version
+                && $candidate->review_status === 'needs_review', 409);
+
+            $candidate->update([
+                'prompt' => trim($validated['prompt']),
+                'question_type' => $validated['question_type'],
+                'options' => in_array($validated['question_type'], $choiceTypes, true) ? $options->all() : null,
+                // Reviewing the wording does not verify an answer key. Keep it ungraded.
+                'expected_answer' => null,
+                'answer_source' => 'not_detected',
+                'review_status' => 'owner_checked',
+                'review_reason' => null,
+            ]);
+        });
+
+        return back()->with('status', 'Your checked question is ready to practise. It will not be automatically scored because its answer key has not been verified.');
     }
 
     public function download(Request $request, Material $material)

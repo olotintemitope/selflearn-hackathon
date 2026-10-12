@@ -21,7 +21,7 @@
             @endif
             <h2>{{ $attempt->correct_count }} of {{ $multipleChoiceCount }} multiple-choice answers correct</h2>
             @if (filled($writtenAnswer?->written_response))
-                <p>Written feedback is AI-generated and provisional, not an official exam mark.</p>
+                <p>Practice feedback, not an official exam result.</p>
             @else
                 <p>No written response was submitted, so no written feedback was generated.</p>
             @endif
@@ -68,7 +68,7 @@
                         </div>
                         @if ($answer?->marking_status === 'marked')
                             <div class="answer-feedback" role="status" aria-live="polite">
-                                <strong>Provisional AI feedback · {{ $answer->points_awarded }} of {{ $answer->max_points }} points</strong>
+                                <strong>Practice feedback · {{ $answer->points_awarded }} of {{ $answer->max_points }} points</strong>
                                 <p data-render-math>{{ $answer->marking_feedback }}</p>
                                 @foreach ($answer->marking_criteria_results ?? [] as $criterion)
                                     <p data-render-math><strong>{{ $criterion['points_awarded'] }} points</strong>: {{ \App\Support\LearnerText::withoutEmDash($criterion['feedback']) }}</p>
@@ -107,7 +107,7 @@
                     @else
                         <label for="response-{{ $question->id }}">Your answer</label>
                         <textarea id="response-{{ $question->id }}" name="responses[{{ $question->id }}]" rows="6" maxlength="12000" @if ($assessment->mode !== 'exam') required @endif aria-describedby="response-help-{{ $question->id }}">{{ old('responses.'.$question->id) }}</textarea>
-                        @if ($assessment->mode !== 'exam')<p id="response-help-{{ $question->id }}" class="muted">Explain in your own words. AI feedback is provisional and based on your uploaded sources.</p>@endif
+                        @if ($assessment->mode !== 'exam')<p id="response-help-{{ $question->id }}" class="muted">Explain in your own words. Feedback will use your materials.</p>@endif
                     @endif
                     @if ($attempt)
                         <details><summary>View source references for this question</summary>

@@ -57,8 +57,11 @@ class PastPaperPracticeController extends Controller
         }
 
         $questions = $this->runQuestions($material, $run);
+        $selectedMaterials = $this->selectedMaterials($material, $run);
+        $isMixed = $selectedMaterials->count() > 1;
+        $learningSpace = $material->learningSpace;
 
-        return view('past-papers.run', compact('material', 'run', 'questions'));
+        return view('past-papers.run', compact('material', 'run', 'questions', 'selectedMaterials', 'isMixed', 'learningSpace'));
     }
 
     public function submitPaper(Request $request, Material $material, PastPaperPracticeRun $run, PastPaperAnswerEvaluator $evaluator)
@@ -136,16 +139,19 @@ class PastPaperPracticeController extends Controller
         abort_unless($run->submitted_at, 404);
 
         $questions = $this->runQuestions($material, $run, allowStale: true);
+        $selectedMaterials = $this->selectedMaterials($material, $run);
+        $isMixed = $selectedMaterials->count() > 1;
+        $learningSpace = $material->learningSpace;
         $attempts = $run->attempts->keyBy('past_paper_question_id');
 
-        return view('past-papers.run-results', compact('material', 'run', 'questions', 'attempts'));
+        return view('past-papers.run-results', compact('material', 'run', 'questions', 'attempts', 'selectedMaterials', 'isMixed', 'learningSpace'));
     }
 
     public function show(Request $request, Material $material, PastPaperQuestion $question)
     {
         $this->authorize('view', $material);
         $this->assertCurrentCandidate($material, $question);
-        abort_unless($question->review_status === 'ready', 404);
+        abort_unless(in_array($question->review_status, PastPaperQuestion::PRACTICE_READY_STATUSES, true), 404);
 
         return view('past-papers.practice', [
             'material' => $material,
@@ -159,7 +165,7 @@ class PastPaperPracticeController extends Controller
     {
         $this->authorize('view', $material);
         $this->assertCurrentCandidate($material, $question);
-        abort_unless($question->review_status === 'ready', 409, 'This question needs review before practice.');
+        abort_unless(in_array($question->review_status, PastPaperQuestion::PRACTICE_READY_STATUSES, true), 409, 'This question needs review before practice.');
 
         $validated = match ($question->question_type) {
             'single_choice', 'true_false' => $request->validate([
@@ -221,13 +227,30 @@ class PastPaperPracticeController extends Controller
         abort_unless($run->material_id === $material->id, 404);
         abort_unless($run->user_id === $request->user()->id, 404);
         abort_unless($material->role === 'past_paper' && $material->status === 'ready', 404);
+        $this->selectedMaterials($material, $run);
+    }
+
+    private function selectedMaterials(Material $material, PastPaperPracticeRun $run)
+    {
+        $ids = array_values(array_unique(array_map('intval', $run->selected_material_ids ?: [$run->material_id])));
+        abort_unless($ids !== [] && $ids[0] === (int) $run->material_id, 404);
+
+        $papersById = $material->learningSpace->materials()
+            ->whereIn('id', $ids)
+            ->where('role', 'past_paper')
+            ->where('status', 'ready')
+            ->get()
+            ->keyBy('id');
+        abort_unless($papersById->count() === count($ids), 404);
+
+        return collect($ids)->map(fn (int $id) => $papersById->get($id));
     }
 
     private function readyQuestions(Material $material)
     {
         return $material->pastPaperQuestions()
             ->where('extraction_version', $material->extraction_version)
-            ->where('review_status', 'ready')
+            ->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)
             ->get()
             ->sort(function (PastPaperQuestion $first, PastPaperQuestion $second): int {
                 $pageOrder = ($first->page ?? PHP_INT_MAX) <=> ($second->page ?? PHP_INT_MAX);
@@ -239,17 +262,28 @@ class PastPaperPracticeController extends Controller
 
     private function runQuestions(Material $material, PastPaperPracticeRun $run, bool $allowStale = false)
     {
+        $selectedMaterials = $this->selectedMaterials($material, $run);
+        $materialIds = $selectedMaterials->pluck('id')->all();
         $positions = array_flip($run->question_ids ?? []);
-        $questions = $material->pastPaperQuestions()
+        $questions = PastPaperQuestion::query()
+            ->whereIn('material_id', $materialIds)
             ->whereIn('id', $run->question_ids ?? [])
-            ->where('review_status', 'ready')
-            ->when(! $allowStale, fn ($query) => $query->where('extraction_version', $material->extraction_version))
-            ->with('sourceChunk')
+            ->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)
+            ->with(['sourceChunk', 'material'])
             ->get()
+            ->filter(function (PastPaperQuestion $question) use ($selectedMaterials, $allowStale): bool {
+                if ($allowStale) {
+                    return true;
+                }
+
+                $sourcePaper = $selectedMaterials->firstWhere('id', $question->material_id);
+
+                return $sourcePaper !== null && $sourcePaper->extraction_version === $question->extraction_version;
+            })
             ->sortBy(fn (PastPaperQuestion $question): int => $positions[$question->id] ?? PHP_INT_MAX)
             ->values();
 
-        abort_unless($questions->count() === count($run->question_ids ?? []), 409, 'This paper has changed since the practice session started. Start a new session from the latest detected questions.');
+        abort_unless($questions->count() === count($run->question_ids ?? []), 409, 'A selected paper has changed since this practice started. Start a new set from the latest questions.');
 
         return $questions;
     }

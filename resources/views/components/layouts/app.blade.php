@@ -22,7 +22,7 @@
     @auth
         <div class="header-actions">
             <button type="button" class="link-button" data-open-accessibility>Accessibility preferences</button>
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" data-offline-user-id="{{ auth()->id() }}">
                 @csrf
                 <button class="link-button">Sign out</button>
                 <p data-offline-logout-status role="status" aria-live="polite" hidden></p>

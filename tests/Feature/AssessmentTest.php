@@ -49,7 +49,9 @@ class AssessmentTest extends TestCase
             ->assertSee('data-read-aloud-target="assessment-instructions"', false)
             ->assertSee('data-read-aloud-target="assessment-question-'.$assessment->questions->firstWhere('question_type', 'multiple_choice')->id.'"', false)
             ->assertSee('data-read-aloud-url="'.route('read-aloud').'"', false)
-            ->assertSee('Choose Listen to hear this text in an AI voice. The text you select is sent to create the audio.')
+            ->assertDontSee('AI-generated speech')
+            ->assertDontSee('AI voice')
+            ->assertDontSee('The text you select is sent')
             ->assertSee('Listen to this')
             ->assertSee('Submit exam')
             ->assertDontSee($sourceTitle)
@@ -389,7 +391,9 @@ class AssessmentTest extends TestCase
         $this->get(route('assessments.show', ['assessment' => $assessment, 'attempt' => $attempt->id]))
             ->assertOk()
             ->assertSee('0 of 3 multiple-choice answers correct')
-            ->assertSee('Provisional AI feedback')
+            ->assertSee('Practice feedback · 3 of 5 points')
+            ->assertSee('Practice feedback, not an official exam result.')
+            ->assertDontSee('AI-generated and provisional')
             ->assertSee('Latest learning signal: 38% across 3 of 8 points.')
             ->assertSee('How to work it out')
             ->assertSee('A worked answer, step by step')
@@ -445,7 +449,7 @@ class AssessmentTest extends TestCase
         $this->get(route('assessments.show', ['assessment' => $assessment, 'attempt' => $attemptId]))
             ->assertOk()
             ->assertSee('No written response was submitted, so no written feedback was generated.')
-            ->assertDontSee('Written feedback is AI-generated and provisional');
+            ->assertDontSee('AI-generated and provisional');
 
         $other = User::factory()->create();
         $this->actingAs($other)->postJson(route('assessments.submit', $assessment), $payload)->assertNotFound();

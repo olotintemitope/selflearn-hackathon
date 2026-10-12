@@ -45,6 +45,15 @@ final class PastPaperQuestionIndexer
 
                 foreach ($candidates as $candidate) {
                     $questionNumbers[] = $candidate['question_number'];
+                    $existing = PastPaperQuestion::query()->where([
+                        'material_chunk_id' => $chunk->id,
+                        'extraction_version' => $version,
+                        'question_number' => $candidate['question_number'],
+                    ])->first();
+                    if ($existing?->review_status === 'owner_checked') {
+                        continue;
+                    }
+
                     PastPaperQuestion::query()->updateOrCreate([
                         'material_chunk_id' => $chunk->id,
                         'extraction_version' => $version,
@@ -70,7 +79,8 @@ final class PastPaperQuestionIndexer
 
                 $stalePageQuestions = $material->pastPaperQuestions()
                     ->where('extraction_version', $version)
-                    ->where('material_chunk_id', $chunk->id);
+                    ->where('material_chunk_id', $chunk->id)
+                    ->where('review_status', '!=', 'owner_checked');
                 if ($questionNumbers === []) {
                     $stalePageQuestions->delete();
                 } else {

@@ -7,7 +7,7 @@ Confirm names and relationships against the Laravel application before migration
 | materials | id, learning_space_id, title, private_source_path, type, status, extraction_version, metadata |
 | material_chunks | id, material_id, extraction_version, content, page, section, locator |
 | past_paper_questions | uuid, material_id, source chunk, extraction version, question number, original wording, detected format, private expected response, review status |
-| past_paper_practice_runs | uuid, material_id, user_id, ordered question UUID snapshot, started_at, learner-selected duration_minutes, expires_at, submitted_at |
+| past_paper_practice_runs | uuid, anchor material_id, ordered selected_material_ids snapshot, user_id, ordered question UUID snapshot, started_at, learner-selected duration_minutes, expires_at, submitted_at |
 | past_paper_attempts | uuid, optional practice_run_id, past_paper_question_id, user_id, submitted response, outcome, marking basis, submitted_at |
 | concepts | id, learning_space_id, name, description, difficulty |
 | concept_sources | concept_id, chunk_id |

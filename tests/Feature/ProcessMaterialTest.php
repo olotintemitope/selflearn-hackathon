@@ -432,7 +432,7 @@ class ProcessMaterialTest extends TestCase
             ->assertOk()
             ->assertSee('Question 4 · Page 3')
             ->assertSee('Define strain energy.')
-            ->assertSee('A source response was detected')
+            ->assertSee('Answer text from the paper is kept separate')
             ->assertDontSee('Some candidates confused it')
             ->assertDontSee('Strain energy is energy stored by deformation.');
 

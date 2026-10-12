@@ -7,6 +7,5 @@
         <button type="button" class="read-aloud-secondary" data-read-aloud-stop disabled>Stop</button>
     </div>
     <audio class="read-aloud-player" controls hidden preload="metadata" aria-label="Audio playback"></audio>
-    <p class="read-aloud-status" data-read-aloud-status role="status" aria-live="polite">Optional AI-generated speech. Choose Listen to hear this content.</p>
-    <p class="muted">Choose Listen to hear this text in an AI voice. The text you select is sent to create the audio.</p>
+    <p class="read-aloud-status" data-read-aloud-status role="status" aria-live="polite"></p>
 </section>

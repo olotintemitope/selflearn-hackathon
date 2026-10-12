@@ -11,6 +11,8 @@ class PastPaperQuestion extends Model
 {
     use HasUuids;
 
+    public const PRACTICE_READY_STATUSES = ['ready', 'owner_checked'];
+
     protected $fillable = [
         'material_id', 'material_chunk_id', 'extraction_version', 'page', 'paper_year', 'marks',
         'question_number', 'prompt', 'question_type', 'options',

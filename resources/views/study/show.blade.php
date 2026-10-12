@@ -27,6 +27,8 @@
         </div>
     </section>
 
+    <p><a class="button-link" href="{{ route('past-paper-mixed.index', $learningSpace) }}">Practise questions from multiple papers</a></p>
+
     @if ($nextStep)
         @php($nextConcept = $nextStep['item']->concept)
         <section class="card next-step" aria-labelledby="next-step-heading">
@@ -82,7 +84,7 @@
                             @php($progress = $assessmentProgress[$item->concept_id] ?? null)
                             @if ($progress)
                                 <p class="muted">Latest practice: {{ $progress['percentage'] }}% ({{ $progress['score_points'] }} of {{ $progress['possible_points'] }} points).
-                                    @if ($progress['written_points'] !== null) Written response: {{ $progress['written_points'] }}/{{ $progress['written_max_points'] }} provisional AI points.
+                                    @if ($progress['written_points'] !== null) Written response: {{ $progress['written_points'] }} of {{ $progress['written_max_points'] }} practice points.
                                     @elseif (in_array($progress['written_status'], ['needs_review', 'failed', 'pending'], true)) Written response is not included because it has no scored feedback yet.
                                     @endif
                                 </p>

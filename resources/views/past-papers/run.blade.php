@@ -1,12 +1,18 @@
 <x-layouts.app :title="'Past-paper practice | '.$material->title">
     <div class="stack paper-run" data-paper-exam data-expires-at="{{ $run->expires_at?->toIso8601String() }}" data-run-key="{{ $run->id }}">
-        <a href="{{ route('materials.show', $material) }}#past-paper-questions-heading">Back to {{ $material->title }}</a>
+        <a href="{{ $isMixed ? route('past-paper-mixed.index', $learningSpace) : route('materials.show', $material).'#past-paper-questions-heading' }}">{{ $isMixed ? 'Back to paper selection' : 'Back to '.$material->title }}</a>
         <header class="paper-exam-header">
             <div>
-                <p class="eyebrow">Exam practice · {{ $questions->count() }} questions</p>
-                <h1>{{ $material->title }}</h1>
-                @if ($questions->contains(fn ($question) => $question->paper_year))
-                    <p class="muted">Year {{ $questions->firstWhere('paper_year')?->paper_year }} from the upload title or filename.</p>
+                <p class="eyebrow">{{ $isMixed ? 'Mixed-paper practice' : 'Exam practice' }} · {{ $questions->count() }} questions</p>
+                <h1>{{ $isMixed ? 'Your selected papers' : $material->title }}</h1>
+                @if ($isMixed)
+                    <ul class="stack" aria-label="Papers in this practice set">
+                        @foreach ($selectedMaterials as $paper)
+                            <li>{{ $paper->title }}</li>
+                        @endforeach
+                    </ul>
+                @elseif ($questions->contains(fn ($question) => $question->paper_year))
+                    <p class="muted">Year {{ $questions->firstWhere('paper_year')?->paper_year }} is a clue from the paper title or file name.</p>
                 @endif
                 <p id="paper-exam-instructions" class="muted">Practice timer, not official paper timing. Draft answers stay in this browser tab until you submit.</p>
                 <x-read-aloud target="paper-exam-instructions" language="en" />
@@ -31,14 +37,18 @@
                 @php($fieldId = 'paper-question-'.$question->id)
                 <section class="quiz-question-surface card paper-exam-question" data-paper-question="{{ $index }}" aria-labelledby="{{ $fieldId }}" tabindex="-1">
                     <fieldset id="paper-question-content-{{ $question->id }}" class="quiz-question">
+                        @php($sourcePaper = $question->material)
                         <legend id="{{ $fieldId }}">
-                            <span class="eyebrow">Question {{ $question->question_number }} · Page {{ $question->page ?? 'not specified' }} · {{ ucfirst(str_replace('_', ' ', $question->question_type)) }}</span>
+                            <span class="eyebrow">{{ $sourcePaper->title }} · Question {{ $question->question_number }} · Page {{ $question->page ?? 'not specified' }} · {{ ucfirst(str_replace('_', ' ', $question->question_type)) }}</span>
+                            @if ($question->paper_year)
+                                <span class="muted">Year {{ $question->paper_year }} from the paper title or file name, not checked against official records.</span>
+                            @endif
                             @if ($question->marks)
-                                <span class="eyebrow">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} detected</span>
+                                <span class="eyebrow">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper</span>
                             @endif
                             <span class="quiz-prompt" data-render-math>{{ $question->prompt }}</span>
                         </legend>
-                        <p class="quiz-source-context"><span>Source:</span> {{ $material->title }} · page {{ $question->page ?? 'not specified' }} · question {{ $question->question_number }}</p>
+                        <p class="quiz-source-context"><span>Source:</span> {{ $sourcePaper->title }} · page {{ $question->page ?? 'not specified' }} · question {{ $question->question_number }}</p>
 
                         @if (in_array($question->question_type, ['single_choice', 'true_false'], true))
                             <div class="quiz-options">
@@ -69,7 +79,7 @@
 
                         <details>
                             <summary>Compare with the extracted question text</summary>
-                            <p><strong>Question transcription</strong></p>
+                            <p><strong>Question wording from the paper</strong></p>
                             <blockquote data-render-math>{{ $question->source_text }}</blockquote>
                             <p class="muted">Check the original paper if the transcription is unclear.</p>
                         </details>

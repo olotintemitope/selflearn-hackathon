@@ -24,12 +24,12 @@ Test deterministic behavior and failures with provider fakes; exercise the visib
 - [ ] Slow-network settings, byte counts and timing observations are recorded.
 - [x] Offline quiz is visibly pending; reconnect grades and syncs once despite retries.
 - [x] New AI generation clearly requires connectivity.
-- [ ] Session expiry and user-specific cache clearing are exercised.
+- [ ] Session expiry and user-specific cache clearing are exercised in a live browser. New automated browser-script tests cover an expired sync response followed by same-account sign-in/sync, account switching, and clearing only the signed-out account's cache.
 Read docs/LOW_BANDWIDTH.md before implementation.
 
 ## Remaining verification
 
 - Timed Exam mode is deliberately not placed in offline packs; only complete Guided assessments with objective questions and one written-response prompt are currently packaged.
 - Slow-network throughput, transferred-byte, and duration measurements remain pending.
-- Session expiry/re-authentication to the same account, switching accounts on one browser, bounded transient retry behavior, and keyboard-only/200% zoom completion still need dedicated acceptance checks.
+- Live session expiry/re-authentication to the same account, switching accounts in one browser, bounded transient retry behavior, and keyboard-only/200% zoom completion still need dedicated acceptance checks. Automated tests now confirm the reader updates the active account and sign-out deletes only that account's saved packs and answers, preserving other accounts' data.
 - The live reconnect check simulated offline state in the browser by toggling `navigator.onLine`; the browser's network stack was not physically disconnected or throttled for that run.

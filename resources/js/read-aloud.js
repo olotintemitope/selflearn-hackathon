@@ -1,3 +1,5 @@
+import { extractReadAloudText } from './read-aloud-content.js';
+
 const readAloudControls = [...document.querySelectorAll('[data-read-aloud-controls]')];
 
 if (readAloudControls.length) {
@@ -36,7 +38,7 @@ if (readAloudControls.length) {
             pauseButton.textContent = 'Pause';
             pauseButton.disabled = false;
             stopButton.disabled = false;
-            status.textContent = `Playing AI-generated audio in ${languageNames[controls.dataset.readAloudLanguage || 'en'] || 'the selected language'}.`;
+            status.textContent = `Playing audio in ${languageNames[controls.dataset.readAloudLanguage || 'en'] || 'the selected language'}.`;
         });
         audio.addEventListener('pause', () => {
             if (!audio.ended && audio.currentTime > 0) {
@@ -56,10 +58,7 @@ if (readAloudControls.length) {
         });
 
         playButton.addEventListener('click', async () => {
-            const content = document.getElementById(controls.dataset.readAloudTarget);
-            const readableContent = content?.cloneNode(true);
-            readableContent?.querySelectorAll('[data-read-aloud-controls]').forEach((control) => control.remove());
-            const text = (readableContent?.innerText || readableContent?.textContent || '').replace(/\s+/gu, ' ').trim();
+            const text = extractReadAloudText(document.getElementById(controls.dataset.readAloudTarget));
             const language = controls.dataset.readAloudLanguage || 'en';
             const languageName = languageNames[language] || language;
 
@@ -75,7 +74,7 @@ if (readAloudControls.length) {
             active = current;
             playButton.disabled = true;
             stopButton.disabled = false;
-            status.textContent = `Preparing AI-generated ${languageName} audio. This may take a moment.`;
+            status.textContent = `Preparing audio in ${languageName}. This may take a moment.`;
 
             try {
                 let blob;
@@ -129,7 +128,7 @@ if (readAloudControls.length) {
             if (active.audio.paused) {
                 active.audio.play().then(() => {
                     pauseButton.textContent = 'Pause';
-                    status.textContent = `Playing AI-generated audio in ${languageNames[controls.dataset.readAloudLanguage || 'en'] || 'the selected language'}.`;
+                    status.textContent = `Playing audio in ${languageNames[controls.dataset.readAloudLanguage || 'en'] || 'the selected language'}.`;
                 }).catch(() => setIdle(controls, 'Audio could not resume. The full text remains available on screen.'));
             } else {
                 active.audio.pause();

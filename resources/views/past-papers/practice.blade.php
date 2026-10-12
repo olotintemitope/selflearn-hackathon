@@ -4,13 +4,13 @@
         <header>
             <p class="eyebrow">{{ $material->title }} · Past-paper practice</p>
             <h1>Question {{ $question->question_number }}</h1>
-            <p id="past-paper-practice-instructions" class="lede">Source page {{ $question->page ?? 'not specified' }}. This is a detected question from your uploaded paper, not a complete exam simulation.</p>
+            <p id="past-paper-practice-instructions" class="lede">Page {{ $question->page ?? 'not specified' }} of your uploaded paper. This is one practice question, not a full exam.</p>
             <x-read-aloud target="past-paper-practice-instructions" language="en" />
             @if ($question->paper_year)
                 <p class="muted">Year {{ $question->paper_year }} from the upload label.</p>
             @endif
             @if ($question->marks)
-                <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} detected.</p>
+                <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper.</p>
             @endif
         </header>
 
@@ -18,30 +18,30 @@
             <section class="quiz-results" role="status" aria-live="polite">
                 <p class="eyebrow">Response submitted</p>
                 @if ($attempt->outcome === 'correct')
-                    <h2>Your answer matches the detected source response.</h2>
-                    <p>This is a comparison with text detected in the uploaded paper, not an independently verified official mark.</p>
+                    <h2>Your answer matches the answer text found in the paper.</h2>
+                    <p>This is practice feedback, not an official mark.</p>
                 @elseif ($attempt->outcome === 'incorrect')
-                    <h2>Your answer does not match the detected source response.</h2>
-                    <p>This comparison may be affected by OCR errors. Check the original paper and any supplied marking scheme.</p>
+                    <h2>Your answer does not match the answer text found in the paper.</h2>
+                    <p>The text may not match your original paper exactly. Check the original paper or a marking guide.</p>
                 @else
                     <h2>Your response is saved, but no score was assigned.</h2>
-                    <p>No unambiguous answer key was available for this format. We have not generated or guessed one.</p>
+                    <p>There was no clear answer in the paper to check it against. Check your original paper or a matching marking guide.</p>
                 @endif
                 @if ($question->answer_source === 'source_expected_response' && $question->expected_answer)
                     <div class="answer-feedback">
-                        <strong>Detected source response</strong>
+                        <strong>Answer text found in the paper</strong>
                         <p data-render-math>{{ $question->expected_answer }}</p>
-                        <p class="muted">Basis: text labelled as an expected response in the extracted source. It has not been verified against a separate marking scheme.</p>
+                        <p class="muted">This answer text was found in the paper. It has not been checked against an official marking guide.</p>
                     </div>
                 @else
-                    <div class="answer-feedback"><strong>No answer key detected.</strong><p>Use the original paper or add a matching marking scheme before treating an answer as correct.</p></div>
+                    <div class="answer-feedback"><strong>No clear answer was found in the paper.</strong><p>Check the original paper or use a matching marking guide.</p></div>
                 @endif
             </section>
         @else
             @if ($question->review_reason)
                 <p class="notice" role="status">{{ $question->review_reason }}</p>
             @endif
-            <p>Submit your response to see whether a clear answer can be checked. If the paper has no unambiguous key for this question, your response will be saved without a score.</p>
+            <p>After you submit, we will compare your answer with the text in the paper. If there is no clear answer to compare, your response will be saved without a score.</p>
         @endif
 
         <section class="quiz-question-surface card" aria-labelledby="past-paper-prompt">
@@ -55,7 +55,7 @@
                         @endif
                         · page {{ $question->page ?? 'not specified' }} · question {{ $question->question_number }}
                         @if ($question->marks)
-                            · {{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} detected
+                            · {{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper
                         @endif
                     </p>
 
@@ -107,11 +107,11 @@
 
         <details>
             <summary>Compare with the extracted source page</summary>
-            <p><strong>Question transcription</strong></p>
+            <p><strong>Question wording from the paper</strong></p>
             <blockquote data-render-math>{{ $question->source_text }}</blockquote>
             @if ($attempt && $sourceChunk)
                 <h2>Full extracted page {{ $question->page ?? 'unknown' }}</h2>
-                <p class="muted">Compare the saved OCR text with the private original paper before relying on the transcription.</p>
+                <p class="muted">Compare the saved question text with your original paper before relying on it.</p>
                 <blockquote data-render-math>{{ $sourceChunk->content }}</blockquote>
             @endif
             <a href="{{ route('materials.download', $material) }}">Open the original paper</a>

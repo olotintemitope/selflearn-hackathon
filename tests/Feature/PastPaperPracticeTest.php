@@ -8,6 +8,8 @@ use App\Models\PastPaperAttempt;
 use App\Models\PastPaperPracticeRun;
 use App\Models\PastPaperQuestion;
 use App\Models\User;
+use App\Services\Learning\PastPaperQuestionIndexer;
+use App\Services\Learning\PastPaperQuestionParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,9 +37,9 @@ class PastPaperPracticeTest extends TestCase
         $this->get(route('past-paper-attempts.show', $attempt))
             ->assertOk()
             ->assertSee('data-read-aloud-controls', false)
-            ->assertSee('Your answer matches the detected source response.')
+            ->assertSee('Your answer matches the answer text found in the paper.')
             ->assertSee('A is the answer')
-            ->assertSee('not been verified against a separate marking scheme');
+            ->assertSee('not been checked against an official marking guide');
     }
 
     public function test_objective_response_mismatch_is_reported_without_claiming_an_official_mark(): void
@@ -51,8 +53,8 @@ class PastPaperPracticeTest extends TestCase
         $this->assertSame('incorrect', $attempt->outcome);
         $this->get(route('past-paper-attempts.show', $attempt))
             ->assertOk()
-            ->assertSee('does not match the detected source response')
-            ->assertSee('may be affected by OCR errors');
+            ->assertSee('does not match the answer text found in the paper')
+            ->assertSee('The text may not match your original paper exactly.');
     }
 
     public function test_structured_response_is_saved_but_not_scored_or_given_a_fabricated_answer(): void
@@ -78,7 +80,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertOk()
             ->assertSee('no score was assigned')
             ->assertSee('A description that sounds explanatory.')
-            ->assertSee('We have not generated or guessed one.');
+            ->assertSee('There was no clear answer in the paper to check it against.');
     }
 
     public function test_uncertain_candidate_cannot_be_submitted(): void
@@ -91,6 +93,63 @@ class PastPaperPracticeTest extends TestCase
         $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'A'])
             ->assertStatus(409);
         $this->assertSame(0, PastPaperAttempt::query()->count());
+    }
+
+    public function test_owner_can_correct_and_include_uncertain_candidate_without_preserving_an_unverified_key(): void
+    {
+        [$user, $material, $question] = $this->candidate([
+            'review_status' => 'needs_review',
+            'review_reason' => 'Question structure could not be identified confidently.',
+        ]);
+        $originalSourceText = $question->source_text;
+        $originalPage = $question->page;
+        $this->actingAs($user)->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('Check or correct this question')
+            ->assertSee('The answer key will not be used for scoring.');
+
+        $this->actingAs($user)->post(route('materials.past-paper-questions.review', [$material, $question]), [
+            'prompt' => 'Which choice shows the corrected question?',
+            'question_type' => 'single_choice',
+            'options' => ['A' => 'First corrected choice', 'B' => 'Second corrected choice'],
+        ])->assertSessionHasNoErrors();
+
+        $question->refresh();
+        $this->assertSame('Which choice shows the corrected question?', $question->prompt);
+        $this->assertSame('owner_checked', $question->review_status);
+        $this->assertSame($originalSourceText, $question->source_text);
+        $this->assertSame($originalPage, $question->page);
+        $this->assertNull($question->expected_answer);
+        $this->assertSame('not_detected', $question->answer_source);
+        $this->assertSame([
+            ['id' => 'A', 'text' => 'First corrected choice'],
+            ['id' => 'B', 'text' => 'Second corrected choice'],
+        ], $question->options);
+
+        $this->actingAs($user)->get(route('past-paper-questions.practice', [$material, $question]))
+            ->assertOk()
+            ->assertSee('Which choice shows the corrected question?');
+        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'A'])
+            ->assertRedirect();
+        $this->assertSame('submitted_ungraded', PastPaperAttempt::query()->firstOrFail()->outcome);
+        $this->assertSame('none', PastPaperAttempt::query()->firstOrFail()->marking_basis);
+
+        $indexer = new PastPaperQuestionIndexer(new PastPaperQuestionParser);
+        $indexer->index($material->fresh());
+        $this->assertSame('Which choice shows the corrected question?', $question->fresh()->prompt);
+        $this->assertSame($originalSourceText, $question->fresh()->source_text);
+    }
+
+    public function test_only_material_owner_can_review_an_uncertain_candidate(): void
+    {
+        [$user, $material, $question] = $this->candidate(['review_status' => 'needs_review']);
+        $other = User::factory()->create();
+
+        $this->actingAs($other)->post(route('materials.past-paper-questions.review', [$material, $question]), [
+            'prompt' => 'A corrected question that is long enough.',
+            'question_type' => 'structured_response',
+        ])->assertForbidden();
+        $this->assertSame('needs_review', $question->fresh()->review_status);
     }
 
     public function test_malformed_objective_response_is_rejected_and_attempt_not_saved(): void
@@ -152,7 +211,9 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('data-read-aloud-target="paper-exam-instructions"', false)
             ->assertSee('data-read-aloud-target="paper-question-content-'.$first->id.'"', false)
             ->assertSee('data-read-aloud-url="'.route('read-aloud').'"', false)
-            ->assertSee('Choose Listen to hear this text in an AI voice. The text you select is sent to create the audio.')
+            ->assertDontSee('AI-generated speech')
+            ->assertDontSee('AI voice')
+            ->assertDontSee('The text you select is sent')
             ->assertSee('Listen to this')
             ->assertSee('Exam practice')
             ->assertSee('Finish and submit')

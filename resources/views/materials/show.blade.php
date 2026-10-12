@@ -167,29 +167,29 @@
                     </div>
                     <form method="POST" action="{{ route('materials.past-paper-questions.index', $material) }}">
                         @csrf
-                        <button class="button-secondary">{{ $pastPaperQuestions->isEmpty() ? 'Find questions on this paper' : 'Refresh detected questions' }}</button>
+                        <button class="button-secondary">{{ $pastPaperQuestions->isEmpty() ? 'Find questions on this paper' : 'Refresh questions from this paper' }}</button>
                     </form>
                 </div>
-                <p>We detect questions from the saved page text without sending the paper to an AI extractor. Each question keeps its extracted wording and page reference. Check it against the original before practice. Detected answer material stays hidden here.</p>
+                <p>Questions are gathered from the pages of your paper. Compare each one with the original before practising. Any answer text found stays hidden until you submit.</p>
                 @if ($readyPastPaperQuestionCount > 0)
                     <form method="POST" action="{{ route('past-paper-practice.start', $material) }}" class="paper-practice-start">
                         @csrf
                         <div>
-                            <p><strong>{{ $readyPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('clear question', $readyPastPaperQuestionCount) }}</strong> can be practised together. Questions needing review stay out of the session.</p>
+                            <p><strong>{{ $readyPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('question', $readyPastPaperQuestionCount) }}</strong> can be practised together. Questions needing a check stay out of the session.</p>
                             <fieldset class="practice-duration">
-                                <legend>Practice timer, not official paper timing</legend>
+                                <legend>Choose your practice time. It is not the paper's official time.</legend>
                                 @foreach ([30, 60, 90] as $minutes)
                                     <label><input type="radio" name="duration_minutes" value="{{ $minutes }}" @checked($loop->first)> {{ $minutes }} min</label>
                                 @endforeach
                             </fieldset>
-                            @error('duration_minutes')<p class="error" role="alert">Choose a 30, 60, or 90 minute practice timer.</p>@enderror
+                            @error('duration_minutes')<p class="error" role="alert">Choose 30, 60, or 90 minutes.</p>@enderror
                         </div>
                         <button>Start exam practice</button>
                     </form>
                 @endif
                 @error('paper_practice')<p class="error" role="alert">{{ $message }}</p>@enderror
                 @if ($pastPaperQuestions->isEmpty())
-                    <p class="muted">No question list has been built for this upload yet. Finding questions uses the extracted pages already saved for this material.</p>
+                    <p class="muted">No question list is ready yet. Choose “Find questions on this paper” to build one.</p>
                 @else
                     <ol class="stack">
                         @foreach ($pastPaperQuestions as $question)
@@ -197,10 +197,10 @@
                                 <div class="section-heading">
                                     <h3>Question {{ $question->question_number }} · Page {{ $question->page ?? 'unknown' }}</h3>
                                     @if ($question->marks)
-                                        <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} detected</p>
+                                        <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper</p>
                                     @endif
-                                    <span class="status status-{{ $question->review_status === 'ready' ? 'ready' : 'pending' }}">
-                                        {{ $question->review_status === 'ready' ? 'Clear extraction' : 'Needs review' }}
+                                    <span class="status status-{{ in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true) ? 'ready' : 'pending' }}">
+                                        {{ $question->review_status === 'owner_checked' ? 'Checked by you' : ($question->review_status === 'ready' ? 'Ready to practise' : 'Needs review') }}
                                     </span>
                                 </div>
                                 <p class="muted">{{ match ($question->question_type) {
@@ -211,12 +211,12 @@
                                     default => 'Written or structured response',
                                 } }} · Paper: {{ $material->title }}
                                     @if ($question->paper_year)
-                                        · Year {{ $question->paper_year }} from upload title or filename
+                                        · Year {{ $question->paper_year }} from the file name or title
                                     @endif
-                                    · {{ $question->answer_source === 'not_detected' ? 'No answer key detected' : 'A source response was detected and is kept separate' }}
+                                    · {{ $question->answer_source === 'not_detected' ? 'No clear answer found in the paper' : 'Answer text from the paper is kept separate' }}
                                 </p>
                                 @if ($question->review_reason)
-                                    <p class="notice">{{ $question->review_reason }} Compare this wording with the original before using it.</p>
+                                    <p class="notice">{{ $question->review_reason }} Check this wording against the original before practising.</p>
                                 @endif
                                 <blockquote data-render-math>{{ $question->prompt }}</blockquote>
                                 @if ($question->options)
@@ -227,12 +227,39 @@
                                     </ol>
                                 @endif
                                 <details>
-                                    <summary>Compare with the extracted page text</summary>
-                                    <p><strong>Question transcription</strong></p>
+                                    <summary>Compare with the text saved from this page</summary>
+                                    <p><strong>Question text</strong></p>
                                     <blockquote data-render-math>{{ $question->source_text }}</blockquote>
                                     <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
                                 </details>
-                                @if ($question->review_status === 'ready')
+                                @if ($question->review_status === 'needs_review')
+                                    <details>
+                                        <summary>Check or correct this question</summary>
+                                        <p>Compare with the original paper. Your correction will not change the saved page text or page reference. The answer key will not be used for scoring.</p>
+                                        <form method="POST" action="{{ route('materials.past-paper-questions.review', [$material, $question]) }}" class="stack">
+                                            @csrf
+                                            <label for="question-prompt-{{ $question->id }}">Question wording</label>
+                                            <textarea id="question-prompt-{{ $question->id }}" name="prompt" rows="4" required minlength="8" maxlength="10000">{{ old('prompt', $question->prompt) }}</textarea>
+                                            @error('prompt')<p class="error" role="alert">{{ $message }}</p>@enderror
+                                            <label for="question-type-{{ $question->id }}">Question format</label>
+                                            <select id="question-type-{{ $question->id }}" name="question_type" required>
+                                                @foreach (['single_choice' => 'Choose one answer', 'multiple_select' => 'Choose all that apply', 'true_false' => 'True or false', 'fill_gap' => 'Fill in the gap', 'structured_response' => 'Written answer'] as $type => $label)
+                                                    <option value="{{ $type }}" @selected(old('question_type', $question->question_type) === $type)>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                            <fieldset class="stack">
+                                                <legend>Answer choices, if this question has them</legend>
+                                                @foreach (range('A', 'H') as $optionId)
+                                                    <label for="question-option-{{ $question->id }}-{{ $optionId }}">Choice {{ $optionId }}</label>
+                                                    <input id="question-option-{{ $question->id }}-{{ $optionId }}" name="options[{{ $optionId }}]" value="{{ old('options.'.$optionId, collect($question->options ?? [])->firstWhere('id', $optionId)['text'] ?? '') }}" maxlength="2000">
+                                                @endforeach
+                                                @error('options')<p class="error" role="alert">{{ $message }}</p>@enderror
+                                            </fieldset>
+                                            <button>Save checked question</button>
+                                        </form>
+                                    </details>
+                                @endif
+                                @if (in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true))
                                     <a class="button-link" href="{{ route('past-paper-questions.practice', [$material, $question]) }}">Practise this question</a>
                                 @else
                                     <p class="muted">This question is not available for practice until its wording and structure have been checked.</p>

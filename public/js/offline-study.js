@@ -41,6 +41,18 @@
     const getAll = (storeName = STORE) => transaction(storeName, 'readonly', (store) => store.getAll());
     const put = (item, storeName = STORE) => transaction(storeName, 'readwrite', (store) => store.put(item));
     const remove = (key, storeName = STORE) => transaction(storeName, 'readwrite', (store) => store.delete(key));
+    const clearUserData = async (userId) => {
+        const accountId = String(userId || '');
+        if (!accountId) throw new Error('The signed-in account could not be identified. Your downloaded study data was kept.');
+        const [packs, attempts] = await Promise.all([getAll(STORE), getAll(ATTEMPTS)]);
+        const accountPacks = packs.filter((pack) => String(pack.userId) === accountId);
+        const accountAttempts = attempts.filter((attempt) => String(attempt.userId) === accountId);
+        await Promise.all([
+            ...accountPacks.map((pack) => remove(pack.key, STORE)),
+            ...accountAttempts.map((attempt) => remove(attempt.key, ATTEMPTS)),
+        ]);
+        return { packs: accountPacks.length, pending: accountAttempts.filter((attempt) => attempt.status === 'pending').length };
+    };
     const rememberUser = (userId) => {
         try { localStorage.setItem(CURRENT_USER_KEY, userId); } catch { /* IndexedDB packs remain partitioned, but cannot be selected in the offline reader. */ }
     };
@@ -91,6 +103,8 @@
         return false;
     };
     const appShellReady = enableAppShell();
+    const accountContext = document.querySelector('[data-offline-user-id]');
+    if (accountContext?.dataset.offlineUserId) rememberUser(String(accountContext.dataset.offlineUserId));
 
     const controls = document.querySelector('[data-offline-controls]');
     if (controls) {
@@ -472,18 +486,20 @@
                 form.submit();
                 return;
             }
-            const pending = (await getAll(ATTEMPTS).catch(() => [])).filter((attempt) => attempt.status === 'pending').length;
-            const unsynced = pending ? ` You also have ${pending} unsynced answer set${pending === 1 ? '' : 's'} that will be deleted.` : '';
-            if (!window.confirm(`Signing out will delete downloaded study packs from this browser.${unsynced} Continue?`)) {
+            const userId = String(form.dataset.offlineUserId || '');
+            if (!userId) {
+                const status = document.querySelector('[data-offline-status]');
+                if (status) status.textContent = 'Your account could not be confirmed, so downloaded study data was kept. Reload this page and try signing out again.';
+                return;
+            }
+            const pending = (await getAll(ATTEMPTS).catch(() => []))
+                .filter((attempt) => attempt.status === 'pending' && String(attempt.userId) === userId).length;
+            const unsynced = pending ? ` You also have ${pending} saved answer set${pending === 1 ? '' : 's'} that will be deleted.` : '';
+            if (!window.confirm(`Signing out will delete your downloaded study packs from this device.${unsynced} Continue?`)) {
                 return;
             }
             try {
-                await new Promise((resolve, reject) => {
-                    const request = indexedDB.deleteDatabase(DATABASE);
-                    request.onsuccess = () => resolve();
-                    request.onblocked = () => reject(new Error('Close other SelfLearn tabs and try signing out again so downloaded study data can be cleared.'));
-                    request.onerror = () => reject(request.error);
-                });
+                await clearUserData(userId);
                 try { localStorage.removeItem(CURRENT_USER_KEY); } catch { /* Signing out still proceeds. */ }
             } catch (error) {
                 const status = form.querySelector('[data-offline-logout-status]') || document.querySelector('[data-offline-status]');

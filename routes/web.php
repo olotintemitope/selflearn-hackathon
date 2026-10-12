@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClockPracticeController;
 use App\Http\Controllers\LearningSpaceController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\MixedPastPaperPracticeController;
 use App\Http\Controllers\OfflineAttemptContextController;
 use App\Http\Controllers\OfflineStudyPackController;
 use App\Http\Controllers\PastPaperPracticeController;
@@ -40,6 +41,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/materials/{material}/rebuild-guide', [MaterialController::class, 'rebuildGuide'])->name('materials.rebuild-guide');
     Route::post('/materials/{material}/relevance', [MaterialController::class, 'resolveRelevance'])->name('materials.relevance');
     Route::post('/materials/{material}/past-paper-questions/index', [MaterialController::class, 'indexPastPaperQuestions'])->name('materials.past-paper-questions.index');
+    Route::post('/materials/{material}/past-paper-questions/{question}/review', [MaterialController::class, 'reviewPastPaperQuestion'])->name('materials.past-paper-questions.review');
     Route::post('/materials/{material}/past-paper-practice', [PastPaperPracticeController::class, 'startPaper'])->name('past-paper-practice.start');
     Route::get('/materials/{material}/past-paper-practice/{run}', [PastPaperPracticeController::class, 'showPaper'])->name('past-paper-practice.show');
     Route::post('/materials/{material}/past-paper-practice/{run}', [PastPaperPracticeController::class, 'submitPaper'])->name('past-paper-practice.submit');
@@ -48,6 +50,8 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/materials/{material}/past-paper-questions/{question}/practice', [PastPaperPracticeController::class, 'submit'])->name('past-paper-questions.submit');
     Route::get('/past-paper-attempts/{attempt}', [PastPaperPracticeController::class, 'result'])->name('past-paper-attempts.show');
     Route::get('/spaces/{learningSpace}/study', [StudyController::class, 'show'])->name('study.show');
+    Route::get('/spaces/{learningSpace}/past-paper-practice/mixed', [MixedPastPaperPracticeController::class, 'index'])->name('past-paper-mixed.index');
+    Route::post('/spaces/{learningSpace}/past-paper-practice/mixed', [MixedPastPaperPracticeController::class, 'start'])->name('past-paper-mixed.start');
     Route::get('/spaces/{learningSpace}/offline-pack', [OfflineStudyPackController::class, 'show'])->name('offline.study-pack.show');
     Route::get('/offline-sync-context', [OfflineAttemptContextController::class, 'show'])->name('offline.sync-context');
     Route::post('/spaces/{learningSpace}/tutor', [StudyController::class, 'ask'])->name('tutor.ask');
