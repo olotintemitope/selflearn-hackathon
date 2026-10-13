@@ -148,10 +148,10 @@ class TutorLanguagePreferenceTest extends TestCase
     public function test_no_evidence_replies_use_the_selected_language_without_calling_the_tutor(): void
     {
         $expected = [
-            'en' => ['I could not find enough detail in your study materials', 'The tutor could not find enough detail in your materials'],
-            'ha' => ['Ban sami isasshen bayani', 'Mai koyarwa bai sami isasshen bayani'],
-            'yo' => ['Mi ò rí ìwífún tó tó', 'Olùkọ́ kò rí ìwífún tó tó'],
-            'ig' => ['Ahụghị m ozi zuru ezu', 'Onye nkuzi ahụghị ozi zuru ezu'],
+            'en' => ['I could not find enough detail in your study materials', 'The tutor could not find enough detail in your materials', 'A new tutor message follows.'],
+            'ha' => ['Ban sami isasshen bayani', 'Mai koyarwa bai sami isasshen bayani', 'Ga sabon saƙo daga mai koyarwa a ƙasa.'],
+            'yo' => ['Mi ò rí ìwífún tó tó', 'Olùkọ́ kò rí ìwífún tó tó', 'Ìfiránṣẹ́ tuntun láti ọ̀dọ̀ olùkọ́ wà ní ìsàlẹ̀.'],
+            'ig' => ['Ahụghị m ozi zuru ezu', 'Onye nkuzi ahụghị ozi zuru ezu', 'Ozi ọhụrụ sitere n’aka onye nkuzi dị n’okpuru.'],
         ];
         $this->app->bind(Tutor::class, fn () => new class implements Tutor
         {
@@ -161,20 +161,22 @@ class TutorLanguagePreferenceTest extends TestCase
             }
         });
 
-        foreach ($expected as $language => [$content, $status]) {
+        foreach ($expected as $language => [$content, $status, $replyReady]) {
             $space = LearningSpace::factory()->create(['preferred_language' => $language]);
 
-            $this->actingAs($space->user)
+            $response = $this->actingAs($space->user)
                 ->from(route('study.show', $space))
-                ->post(route('tutor.ask', $space), ['question' => 'Explain photosynthesis.'])
-                ->assertRedirect(route('study.show', $space))
-                ->assertSessionHas('status', fn (string $value): bool => str_contains($value, $status));
+                ->post(route('tutor.ask', $space), ['question' => 'Explain photosynthesis.']);
 
             $message = $space->tutorMessages()->where('role', 'assistant')->firstOrFail();
+            $response->assertRedirect(route('study.show', $space).'#tutor-reply-status-'.$message->id)
+                ->assertSessionHas('status', fn (string $value): bool => str_contains($value, $status))
+                ->assertSessionHas('tutor_reply_id', $message->id);
             $this->assertSame($language, $message->language);
             $this->assertStringContainsString($content, $message->content);
             $this->assertTrue($message->insufficient_evidence);
             $this->assertSame([], $message->citations);
+            $this->get(route('study.show', $space))->assertOk()->assertSee($replyReady);
         }
     }
 
