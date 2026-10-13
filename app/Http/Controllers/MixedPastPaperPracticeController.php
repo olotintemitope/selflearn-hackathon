@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LearningSpace;
 use App\Models\Material;
+use App\Models\MaterialChunk;
 use App\Models\PastPaperPracticeRun;
 use App\Models\PastPaperQuestion;
 use Illuminate\Http\Request;
@@ -34,6 +35,35 @@ class MixedPastPaperPracticeController extends Controller
             ->filter(fn (Material $material): bool => $material->ready_question_count > 0)
             ->values();
 
+        $chunksByMaterial = MaterialChunk::query()
+            ->select('material_chunks.id', 'material_chunks.material_id', 'material_chunks.page')
+            ->where('relevance_status', 'related')
+            ->whereIn('material_id', $papers->modelKeys())
+            ->whereHas('material', fn ($query) => $query
+                ->where('learning_space_id', $learningSpace->id)
+                ->whereColumn('materials.extraction_version', 'material_chunks.extraction_version'))
+            ->with(['concepts' => fn ($query) => $query->where('learning_space_id', $learningSpace->id)])
+            ->get()
+            ->groupBy('material_id');
+
+        $papers->each(function (Material $paper) use ($chunksByMaterial): void {
+            $topics = $chunksByMaterial->get($paper->id, collect())
+                ->flatMap(fn (MaterialChunk $chunk) => $chunk->concepts->map(fn ($concept) => [
+                    'id' => $concept->id,
+                    'name' => $concept->name,
+                    'page' => $chunk->page,
+                ]))
+                ->groupBy('id')
+                ->map(fn ($sources) => [
+                    'name' => $sources->first()['name'],
+                    'pages' => $sources->pluck('page')->filter()->unique()->sort()->values(),
+                ])
+                ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
+
+            $paper->setAttribute('related_topic_evidence', $topics);
+        });
+
         return view('past-papers.mixed-select', compact('learningSpace', 'papers'));
     }
 
@@ -44,6 +74,10 @@ class MixedPastPaperPracticeController extends Controller
             'material_ids' => ['required', 'array', 'min:2', 'max:12'],
             'material_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
             'duration_minutes' => ['required', 'integer', 'in:30,60,90'],
+            'topic_grouping_confirmed' => ['required', 'accepted'],
+        ], [
+            'topic_grouping_confirmed.required' => 'Confirm that you want these selected papers in the same practice set.',
+            'topic_grouping_confirmed.accepted' => 'Confirm that you want these selected papers in the same practice set.',
         ]);
 
         $submittedIds = array_map('intval', $validated['material_ids']);

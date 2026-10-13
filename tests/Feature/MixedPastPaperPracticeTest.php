@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Concept;
 use App\Models\LearningSpace;
 use App\Models\Material;
 use App\Models\PastPaperPracticeRun;
@@ -20,6 +21,16 @@ class MixedPastPaperPracticeTest extends TestCase
         $firstSecondQuestion = $this->question($firstPaper, 2, 4, ['question_number' => '2', 'marks' => null]);
         $secondPaper = $this->addPaper($space, 'Physics 2022', 0);
         $secondQuestion = $this->question($secondPaper, 1, 1, ['paper_year' => 2022, 'marks' => 6]);
+        $this->addConcept($firstPaper, 'Energy transfer', 2);
+        $chemicalConcept = $this->addConcept($secondPaper, 'Chemical reactions', 3);
+        $staleChunk = $secondPaper->chunks()->create([
+            'extraction_version' => 0,
+            'content' => 'Outdated text must not appear as a current topic.',
+            'page' => 99,
+            'locator' => ['page' => 99],
+            'relevance_status' => 'related',
+        ]);
+        $chemicalConcept->sources()->attach($staleChunk);
         $excluded = $this->question($secondPaper, 3, 3, [
             'question_number' => '3', 'review_status' => 'needs_review',
         ]);
@@ -30,11 +41,16 @@ class MixedPastPaperPracticeTest extends TestCase
             ->assertSee('Physics 2022')
             ->assertSee('Year 2021 from the paper title or file name')
             ->assertSee('2 clear questions ready')
+            ->assertSeeInOrder(['Physics 2021', 'Energy transfer', 'Page 2', 'Physics 2022', 'Chemical reactions', 'Page 3'])
+            ->assertSee('I checked the topics and want these papers in one practice set, even if the topics differ.')
+            ->assertDontSee('Page 99')
+            ->assertDontSee('Outdated text must not appear as a current topic.')
             ->assertDontSee($excluded->prompt);
 
         $this->post(route('past-paper-mixed.start', $space), [
             'material_ids' => [$secondPaper->id, $firstPaper->id],
             'duration_minutes' => 60,
+            'topic_grouping_confirmed' => '1',
         ])->assertRedirect();
 
         $run = PastPaperPracticeRun::query()->firstOrFail();
@@ -75,6 +91,23 @@ class MixedPastPaperPracticeTest extends TestCase
         $this->assertSame(collect([$firstQuestion->id, $secondQuestion->id])->sort()->values()->all(), $attemptQuestionIds);
     }
 
+    public function test_mixed_practice_cannot_start_until_the_learner_confirms_the_selected_papers(): void
+    {
+        [$user, $space, $firstPaper] = $this->paper('Physics 2021', 2021, 1);
+        $secondPaper = $this->addPaper($space, 'Physics 2022', 1);
+
+        $response = $this->actingAs($user)->from(route('past-paper-mixed.index', $space))->followingRedirects()
+            ->post(route('past-paper-mixed.start', $space), [
+                'material_ids' => [$firstPaper->id, $secondPaper->id],
+                'duration_minutes' => 30,
+            ]);
+
+        $response->assertOk()
+            ->assertSee('Confirm that you want these selected papers in the same practice set.');
+
+        $this->assertSame(0, PastPaperPracticeRun::query()->count());
+    }
+
     public function test_mixed_selection_rejects_materials_from_other_spaces_and_other_owners(): void
     {
         [$user, $space, $firstPaper] = $this->paper('Chemistry 2020', 2020, 1);
@@ -85,12 +118,14 @@ class MixedPastPaperPracticeTest extends TestCase
             ->post(route('past-paper-mixed.start', $space), [
                 'material_ids' => [$firstPaper->id, $sameOwnerOtherSpace->id],
                 'duration_minutes' => 30,
+                'topic_grouping_confirmed' => '1',
             ])
             ->assertSessionHasErrors('material_ids');
 
         $this->post(route('past-paper-mixed.start', $space), [
             'material_ids' => [$firstPaper->id, $otherOwnerPaper->id],
             'duration_minutes' => 30,
+            'topic_grouping_confirmed' => '1',
         ])->assertSessionHasErrors('material_ids');
 
         $this->assertSame(0, PastPaperPracticeRun::query()->count());
@@ -105,6 +140,7 @@ class MixedPastPaperPracticeTest extends TestCase
             ->post(route('past-paper-mixed.start', $space), [
                 'material_ids' => [$firstPaper->id, $emptyPaper->id],
                 'duration_minutes' => 30,
+                'topic_grouping_confirmed' => '1',
             ])
             ->assertSessionHasErrors('material_ids');
 
@@ -112,6 +148,7 @@ class MixedPastPaperPracticeTest extends TestCase
         $this->post(route('past-paper-mixed.start', $space), [
             'material_ids' => [$firstPaper->id, $secondPaper->id],
             'duration_minutes' => 45,
+            'topic_grouping_confirmed' => '1',
         ])->assertSessionHasErrors('duration_minutes');
 
         $this->assertSame(0, PastPaperPracticeRun::query()->count());
@@ -124,6 +161,7 @@ class MixedPastPaperPracticeTest extends TestCase
         $this->actingAs($owner)->post(route('past-paper-mixed.start', $space), [
             'material_ids' => [$firstPaper->id, $secondPaper->id],
             'duration_minutes' => 30,
+            'topic_grouping_confirmed' => '1',
         ]);
         $run = PastPaperPracticeRun::query()->firstOrFail();
         $other = User::factory()->create();
@@ -140,6 +178,7 @@ class MixedPastPaperPracticeTest extends TestCase
         $this->actingAs($user)->post(route('past-paper-mixed.start', $space), [
             'material_ids' => [$firstPaper->id, $secondPaper->id],
             'duration_minutes' => 30,
+            'topic_grouping_confirmed' => '1',
         ]);
         $run = PastPaperPracticeRun::query()->firstOrFail();
 
@@ -174,6 +213,25 @@ class MixedPastPaperPracticeTest extends TestCase
         }
 
         return $paper;
+    }
+
+    private function addConcept(Material $paper, string $name, int $page): Concept
+    {
+        $chunk = $paper->chunks()->create([
+            'extraction_version' => $paper->extraction_version,
+            'content' => $name.' source evidence.',
+            'page' => $page,
+            'locator' => ['page' => $page],
+            'relevance_status' => 'related',
+        ]);
+        $concept = $paper->learningSpace->concepts()->create([
+            'name' => $name,
+            'description' => 'A source-linked topic.',
+            'difficulty' => 'introductory',
+        ]);
+        $concept->sources()->attach($chunk);
+
+        return $concept;
     }
 
     private function question(Material $paper, int $number, int $page, array $overrides = []): PastPaperQuestion

@@ -1,6 +1,6 @@
 # Slice 7: Choose how to use an uploaded exam paper
 
-**Backlog status:** In progress. The ready-paper page now offers separate practice, concept-first study, and help-me-choose routes. Core states have automated and live-browser evidence; topic confirmation, multi-paper grouping, keyboard-only navigation, and direct 200% zoom remain open.
+**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Mixed practice now displays source-linked topics for each paper and requires explicit confirmation before starting. Topic subset editing, incomplete extraction/retry review, full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
 
 ## Learner outcome
 
@@ -38,7 +38,7 @@ If the implementation agents need to touch the same files, do the recommendation
 
 ### Evidence and edge cases
 
-- [ ] Do not combine unrelated papers or subjects silently. The mixed-paper selector currently asks which papers to include but does not yet show per-paper topic evidence or confirm topic grouping.
+- [x] Do not combine unrelated papers or subjects silently. The mixed selector shows current source-linked topics and pages per paper, permits the learner to remove papers, and requires explicit confirmation before combining the selected papers, even when topics differ.
 - [x] Use only related pages and ready questions/concepts in the panel and recommendation. Source excerpts and topic page references exclude stale extraction versions; a regression test covers stale evidence.
 - [x] If no concepts are available, do not promise concept-first learning; feature tests cover preserving ready practice and the no-concept recommendation.
 - [x] If no questions are ready, do not offer a broken exam start; held-question tests confirm the review path remains available.
@@ -61,8 +61,8 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Ready questions, no concepts: exam practice remains available and no concept recommendation is invented.
 - [x] Extraction ready, question indexing not started: the choice remains useful, concept study stays available when supported, and finding questions remains visible.
 - [x] All question candidates held for review: no exam-start action; review path remains clear.
-- [ ] Multiple related papers: learner can select papers, but per-paper topic evidence remains open.
-- [ ] Mixed or unrelated materials: topic grouping is not confirmed before use yet.
+- [x] Multiple related papers: learner can select papers and inspect distinct topic/page evidence per paper before confirming the set.
+- [x] Mixed or unrelated materials: distinct topics remain attributed to their papers and the learner must explicitly confirm the selected set before practice starts.
 - [x] Learner intent produces a reasoned recommendation and does not lock the learner into a route. Automated tests cover intent outcomes; the live browser covered “not sure.”
 - [x] Owner and non-owner access to the material page is covered by feature tests; destinations retain their existing ownership checks.
 - [ ] Verify browser back and route switching across practice, mixed practice, and study destinations.
