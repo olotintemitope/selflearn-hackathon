@@ -54,7 +54,7 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Follows the design system's borderless surfaces, spacing, and plain learner-facing copy.
 - [x] Keyboard-only navigation can open the topic chooser and reach its checkbox with a visible 3px focus outline. At 320px, the document remained 305 CSS pixels wide with no horizontal overflow.
 - [x] Live responsive reflow checked on the ready-paper and study-path views at 320, 375, 768, 1024, 1440, 2560, and 3840 CSS-pixel viewport widths; neither view had horizontal document overflow.
-- [ ] Direct 200% browser zoom, broader route/device coverage, and screen-reader review remain open.
+- [ ] Direct 200% browser zoom, broader route/device coverage, and screen-reader review remain open. The available Playwright browser interface only resizes the viewport; keyboard zoom shortcuts did not change the browser's scale, so this was not a native 200% zoom test.
 - [x] The choice and recommendation work locally without generated content or another model request.
 
 ## Agent verification checklist
@@ -71,6 +71,10 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Learner intent produces a reasoned recommendation and does not lock the learner into a route. Automated tests cover intent outcomes; the live browser covered “not sure.”
 - [x] Owner and non-owner access to the material page is covered by feature tests; destinations retain their existing ownership checks.
 - [x] Verify browser back and route switching across practice, mixed practice, and study destinations. Live browser returned from each destination to the source paper page; the practice session was not submitted.
+
+### Additional live acceptance pass, 2026-10-13
+
+Playwright-controlled Chrome on `http://127.0.0.1:8015`, viewport 320 × 844 CSS pixels. The ready paper, single-paper practice, mixed-paper selector, mixed-paper practice, study overview, and selected-topic study route each measured 305 CSS pixels for both `document.documentElement.scrollWidth` and `clientWidth`, with no horizontal document overflow. Keyboard navigation opened the single-paper practice and mixed-paper selector; in the selector, Space selected two papers and Enter started the mixed run. The two paper names and their per-paper question source labels were present in the mixed run. Browser Back returned from single practice to its paper, from mixed practice to the selector (retaining the two selected papers), and between study and the selector/paper routes. A later Tab pass showed a 3px solid green focus outline on the practice link, answer radio, review button, mixed selector checkbox labels, start button, and study links. The answer radio remained unselected and review remained off. The single-paper and mixed-paper sessions were newly created, left blank and unsubmitted; no existing answers were changed. No screen reader was used. Direct native 200% zoom could not be set with the available browser controls and remains unverified. The live server's deployed source revision was not independently confirmed against this worktree's commit.
 
 ## Verification evidence to record
 
