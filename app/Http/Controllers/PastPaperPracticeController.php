@@ -7,6 +7,9 @@ use App\Models\PastPaperAttempt;
 use App\Models\PastPaperPracticeRun;
 use App\Models\PastPaperQuestion;
 use App\Services\Learning\PastPaperAnswerEvaluator;
+use App\Services\Learning\PastPaperWrittenFeedbackException;
+use App\Services\Learning\PastPaperWrittenFeedbackGenerator;
+use App\Services\Learning\PastPaperWrittenFeedbackValidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -161,7 +164,7 @@ class PastPaperPracticeController extends Controller
         ]);
     }
 
-    public function submit(Request $request, Material $material, PastPaperQuestion $question, PastPaperAnswerEvaluator $evaluator)
+    public function submit(Request $request, Material $material, PastPaperQuestion $question, PastPaperAnswerEvaluator $evaluator, PastPaperWrittenFeedbackGenerator $writtenFeedback, PastPaperWrittenFeedbackValidator $writtenFeedbackValidator)
     {
         $this->authorize('view', $material);
         $this->assertCurrentCandidate($material, $question);
@@ -193,6 +196,10 @@ class PastPaperPracticeController extends Controller
             'submitted_at' => now(),
         ]);
 
+        if (in_array($question->question_type, ['fill_gap', 'structured_response'], true)) {
+            $this->addWrittenFeedback($attempt, $question, $material, $writtenFeedback, $writtenFeedbackValidator);
+        }
+
         return redirect()->route('past-paper-attempts.show', $attempt);
     }
 
@@ -220,6 +227,38 @@ class PastPaperPracticeController extends Controller
             && $question->extraction_version === $material->extraction_version,
             404,
         );
+    }
+
+    private function addWrittenFeedback(PastPaperAttempt $attempt, PastPaperQuestion $question, Material $material, PastPaperWrittenFeedbackGenerator $generator, PastPaperWrittenFeedbackValidator $validator): void
+    {
+        $chunk = $question->sourceChunk;
+        if (! $chunk
+            || $chunk->material_id !== $material->id
+            || $chunk->extraction_version !== $material->extraction_version
+            || $chunk->relevance_status !== 'related'
+            || trim($chunk->content) === '') {
+            $attempt->update(['written_feedback_status' => 'unavailable']);
+
+            return;
+        }
+
+        try {
+            $result = $generator->generate(
+                $question->prompt,
+                $question->question_type,
+                (string) ($attempt->response['value'] ?? ''),
+                [['id' => (int) $chunk->id, 'content' => mb_substr($chunk->content, 0, 6000), 'page' => $chunk->page, 'material_title' => $material->title]],
+            );
+            $result = $validator->validate($result, [(int) $chunk->id]);
+            $attempt->update([
+                'written_feedback_status' => $result['status'],
+                'written_feedback' => $result['feedback'],
+                'written_feedback_steps' => $result['steps'],
+                'written_feedback_source_chunk_ids' => $result['source_chunk_ids'],
+            ]);
+        } catch (PastPaperWrittenFeedbackException) {
+            $attempt->update(['written_feedback_status' => 'unavailable']);
+        }
     }
 
     private function assertRunOwner(Request $request, Material $material, PastPaperPracticeRun $run): void
