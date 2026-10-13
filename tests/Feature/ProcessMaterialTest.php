@@ -8,6 +8,7 @@ use App\Models\Material;
 use App\Models\PastPaperQuestion;
 use App\Models\User;
 use App\Services\Learning\ConceptExtractor;
+use App\Services\Learning\LocalMaterialRelevanceClassifier;
 use App\Services\Learning\MaterialRelevanceClassifier;
 use App\Services\Learning\PastPaperQuestionIndexer;
 use App\Services\Ocr\BatchOcrClient;
@@ -488,6 +489,178 @@ class ProcessMaterialTest extends TestCase
         $this->assertSame(1, $material->refresh()->metadata['separate_page_count']);
         $this->assertSame(1, $material->metadata['possibly_related_page_count']);
         Storage::disk('local')->assertExists($material->private_source_path);
+    }
+
+    public function test_generic_goal_topic_anchor_keeps_food_and_ict_pages_out_of_physics_concepts(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $space = LearningSpace::factory()->for($owner)->create([
+            'title' => 'Real scan batch evaluation',
+            'goal' => 'Study the materials I upload',
+        ]);
+        $firstMaterial = Material::factory()->for($space)->create(['status' => 'ready', 'extraction_version' => 1]);
+        $physicsSource = $firstMaterial->chunks()->create([
+            'extraction_version' => 1,
+            'page' => 1,
+            'content' => 'Conservation of energy: a pendulum transfers potential energy into kinetic energy. A force changes motion.',
+            'locator' => ['page' => 1],
+            'relevance_status' => 'related',
+        ]);
+        $physicsConcept = $space->concepts()->create([
+            'name' => 'Conservation of energy',
+            'description' => 'Energy changes form in a closed system. A pendulum transfers potential energy into kinetic energy. A force changes motion.',
+        ]);
+        $physicsConcept->sources()->attach($physicsSource->id);
+
+        foreach ([
+            [
+                'name' => 'Food and nutrition',
+                'description' => 'Carbohydrates provide nutrients. Proteins support growth, while vitamins and minerals support health.',
+                'content' => 'Food and Nutrition: carbohydrates provide nutrients. Proteins support growth, while vitamins and minerals support health.',
+            ],
+            [
+                'name' => 'Computer networks',
+                'description' => 'Computer hardware, software, networks, and web pages support information technology.',
+                'content' => 'Information and Communication Technology: computer hardware, software, networks, and web pages.',
+            ],
+        ] as $seed) {
+            $otherMaterial = Material::factory()->for($space)->create(['status' => 'ready', 'extraction_version' => 1]);
+            $otherSource = $otherMaterial->chunks()->create([
+                'extraction_version' => 1,
+                'page' => 1,
+                'content' => $seed['content'],
+                'locator' => ['page' => 1],
+                'relevance_status' => 'related',
+            ]);
+            $otherConcept = $space->concepts()->create([
+                'name' => $seed['name'],
+                'description' => $seed['description'],
+            ]);
+            $otherConcept->sources()->attach($otherSource->id);
+        }
+
+        $material = Material::factory()->for($space)->create([
+            'private_source_path' => 'materials/mixed-subject-scans.png',
+        ]);
+        Storage::disk('local')->put($material->private_source_path, 'image-bytes');
+        $ocr = new class implements OcrClient
+        {
+            public function extract(string $bytes, string $mimeType): OcrResult
+            {
+                return new OcrResult([
+                    ['page' => 1, 'content' => 'Food and Nutrition: carbohydrates provide energy. Proteins support growth, while vitamins and minerals support health.', 'extractor' => 'pdftotext'],
+                    ['page' => 2, 'content' => 'Information and Communication Technology: computer hardware, software, networks, and web pages.', 'extractor' => 'pdftotext'],
+                    ['page' => 3, 'content' => 'Kinetic energy depends on mass and velocity. A force doing work transfers energy and changes motion.', 'extractor' => 'pdftotext'],
+                ], null, null, 'pdftotext');
+            }
+        };
+        $extractor = new class implements ConceptExtractor
+        {
+            public function extract(array $chunks): array
+            {
+                TestCase::assertCount(1, $chunks);
+                TestCase::assertSame(3, $chunks[0]['page']);
+
+                return ['concepts' => [[
+                    'id' => 'kinetic-energy',
+                    'name' => 'Kinetic energy',
+                    'description' => 'Kinetic energy depends on mass and velocity.',
+                    'source_chunk_ids' => [$chunks[0]['id']],
+                ]], 'dependencies' => []];
+            }
+        };
+
+        (new ProcessMaterial($material->id))->handle($ocr, $extractor, new LocalMaterialRelevanceClassifier);
+
+        $this->assertSame(['possibly_related', 'separate', 'related'], $material->chunks()->orderBy('page')->pluck('relevance_status')->all());
+        $this->assertSame(4, $space->concepts()->count());
+        $this->assertSame([$material->chunks()->where('page', 3)->value('id')], $space->concepts()->where('name', 'Kinetic energy')->firstOrFail()->sources()->pluck('material_chunks.id')->all());
+        Storage::disk('local')->assertExists($material->private_source_path);
+    }
+
+    public function test_a_later_upload_waits_for_the_first_topic_anchor_in_a_broad_space(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $ocr = new class implements OcrClient
+        {
+            public function extract(string $bytes, string $mimeType): OcrResult
+            {
+                return new OcrResult([['page' => 1, 'content' => 'Photosynthesis converts light into stored energy.', 'extractor' => 'pdftotext']], null, null, 'pdftotext');
+            }
+        };
+        $extractor = new class implements ConceptExtractor
+        {
+            public function extract(array $chunks): array
+            {
+                TestCase::assertSame([], $chunks);
+
+                return ['concepts' => [], 'dependencies' => []];
+            }
+        };
+
+        foreach (['pending', 'processing'] as $earlierStatus) {
+            $space = LearningSpace::factory()->for($owner)->create([
+                'title' => 'Real scan batch evaluation',
+                'goal' => 'Study the materials I upload',
+            ]);
+            Material::factory()->for($space)->create([
+                'status' => $earlierStatus,
+                'extraction_version' => 1,
+                'created_at' => now()->subMinute(),
+            ]);
+            $material = Material::factory()->for($space)->create([
+                'private_source_path' => 'materials/later-upload-'.$earlierStatus.'.png',
+                'created_at' => now(),
+            ]);
+            Storage::disk('local')->put($material->private_source_path, 'image-bytes');
+
+            (new ProcessMaterial($material->id))->handle($ocr, $extractor, new LocalMaterialRelevanceClassifier);
+
+            $this->assertSame('possibly_related', $material->chunks()->firstOrFail()->relevance_status);
+            $this->assertStringContainsString('first material is still being prepared', $material->chunks()->first()->relevance_reason);
+        }
+    }
+
+    public function test_a_later_upload_can_anchor_after_a_completed_material_without_concepts(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $space = LearningSpace::factory()->for($owner)->create([
+            'title' => 'General study',
+            'goal' => 'Study the materials I upload',
+        ]);
+        Material::factory()->for($space)->create([
+            'status' => 'ready',
+            'extraction_version' => 1,
+            'created_at' => now()->subMinute(),
+        ]);
+        $material = Material::factory()->for($space)->create([
+            'private_source_path' => 'materials/first-readable-topic.png',
+            'created_at' => now(),
+        ]);
+        Storage::disk('local')->put($material->private_source_path, 'image-bytes');
+        $ocr = new class implements OcrClient
+        {
+            public function extract(string $bytes, string $mimeType): OcrResult
+            {
+                return new OcrResult([['page' => 1, 'content' => 'Physics explains motion, forces, and energy transfer.', 'extractor' => 'pdftotext']], null, null, 'pdftotext');
+            }
+        };
+        $extractor = new class implements ConceptExtractor
+        {
+            public function extract(array $chunks): array
+            {
+                TestCase::assertCount(1, $chunks);
+
+                return ['concepts' => [], 'dependencies' => []];
+            }
+        };
+
+        (new ProcessMaterial($material->id))->handle($ocr, $extractor, new LocalMaterialRelevanceClassifier);
+
+        $this->assertSame('related', $material->chunks()->firstOrFail()->relevance_status);
     }
 
     public function test_empty_ai_concept_output_uses_a_labeled_fallback_for_confirmed_clock_readings(): void

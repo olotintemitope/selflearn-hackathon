@@ -6,7 +6,7 @@ Last reconciled: 2026-10-13. This is the canonical priority and status index. Th
 
 | Slice | Status | Remaining work |
 | --- | --- | --- |
-| [Material ingestion and concepts](backlog/01-material-to-concepts.md) | Complete for the proof-of-concept scope | Broaden classifier evaluation only when new failure cases appear. |
+| [Material ingestion and concepts](backlog/01-material-to-concepts.md) | Complete for the proof-of-concept scope | Generic-goal topic anchoring is feature-tested against Physics, Food/Nutrition, and ICT examples; a live mixed-domain holdout evaluation and low-overlap same-domain review remain. |
 | [Learning path and tutor](backlog/02-path-and-tutor.md) | Complete for the proof-of-concept scope | Fluent-speaker review of Hausa, Yoruba, and Igbo recovery copy remains open. |
 | [Quiz, exam practice, and adaptation](backlog/03-quiz-and-adaptation.md) | Built; exam-bank follow-ups remain | A live scanned Physics paper passed Mathpix extraction and single-paper practice, with 11 of 12 questions available and all submitted unscored because there is no verified key. Mixed-paper live submission, marking schemes, official timing/marks matching, written/fill-gap marking, and review of the held OCR candidate remain. |
 | [Offline learning and demo](backlog/04-offline-and-demo.md) | Core flow built; acceptance checks remain | Slow-network measurements, session/account transitions, and accessibility completion. |
