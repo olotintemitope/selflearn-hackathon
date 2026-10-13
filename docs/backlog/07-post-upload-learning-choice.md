@@ -32,7 +32,8 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Offer distinct practice, concept-first study, and help-me-choose routes without preselecting one. The recommendation form is collapsed until requested.
 - [x] Display source-linked topic names, page references, excerpts, and practice status. Learners can inspect evidence and choose one or more current paper topics before opening the path. The full learning path remains available; selected topics guide the next step and their required prerequisites are included first. This is a focus choice, not a destructive edit to the space's curriculum.
 - [x] “Learn these topics first” opens the existing guided study path at the selected source-linked concept; the live browser confirmed the route and study page.
-- [ ] “Practise this paper” opens the existing single-paper practice flow for that paper. A separate “Choose papers” action may open the existing mixed-practice selector; retain per-paper attribution. Keep lessons, topic hints, and answer feedback out of the timed question sequence until submission.
+- [x] “Practise this paper” opens the existing single-paper practice flow for that paper. The live browser opened a new practice session and left it unsubmitted; the separate “Choose papers” route also opened the mixed-practice selector.
+- [ ] Confirm in a live submitted-session review that lessons, topic hints, and answer feedback stay out of the timed question sequence until submission.
 - [x] “Help me choose” asks what the learner wants today, gives a deterministic plain-language recommendation, and keeps an immediate alternate route. A live submission of “I am not sure yet” returned study and practice actions.
 - [x] Route switching remains available from the paper page. Concept study is not a prerequisite for practice.
 
