@@ -128,7 +128,7 @@
         <aside class="tutor-section" aria-labelledby="tutor-heading">
             <header class="tutor-header"><p class="eyebrow">Grounded tutor</p><h2 id="tutor-heading">Ask your materials</h2><p class="muted">Answers cite exact excerpts. Supplementary knowledge is labelled separately.</p></header>
             @include('study.partials.tutor-language', ['learningSpace' => $learningSpace])
-            <div class="conversation" aria-live="polite" aria-label="Conversation with your tutor">
+            <div class="conversation" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with your tutor">
                 @forelse ($messages as $message)
                     <article class="message message-{{ $message->role }} {{ $message->status === 'failed' ? 'error' : '' }}">
                         <h3>{{ $message->role === 'user' ? 'You' : 'Tutor' }}</h3>

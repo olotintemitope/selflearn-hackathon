@@ -91,6 +91,22 @@ class ReadAloudTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_speech_in_unlisted_languages_gets_a_plain_text_fallback_without_provider_call(): void
+    {
+        config(['services.openai.api_key' => 'test-token']);
+        Http::fake();
+        $learner = User::factory()->create();
+
+        foreach (['ha' => 'Hausa', 'ig' => 'Igbo', 'yo' => 'Yoruba'] as $language => $name) {
+            $this->actingAs($learner)
+                ->postJson(route('read-aloud'), ['text' => 'Read this tutor reply.', 'language' => $language])
+                ->assertStatus(422)
+                ->assertJsonPath('message', "Audio is not available in {$name} yet. You can still read it on screen.");
+        }
+
+        Http::assertNothingSent();
+    }
+
     public function test_provider_failure_returns_a_safe_fallback_message(): void
     {
         config([

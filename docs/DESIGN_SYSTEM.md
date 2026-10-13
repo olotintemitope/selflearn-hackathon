@@ -105,7 +105,7 @@ Describe the learner outcome in plain language, such as “Preparing your study 
 
 ### Header
 
-Use the serif SelfLearn wordmark followed by a small green robot icon on the left and one compact session action on the right. Keep the icon decorative and hidden from assistive technology so the linked brand is announced once. Keep the header quiet so learner content remains dominant.
+Use the serif SelfLearn wordmark followed by a small green robot icon on the left. On the right, show a compact, icon-only accessibility preferences control with a minimum 44px target and an accessible name, followed by the sign-out action. Keep decorative SVGs hidden from assistive technology, provide a visible focus ring, and keep the header quiet so learner content remains dominant.
 
 ### Hero
 
@@ -188,6 +188,7 @@ Every learner-facing screen must target WCAG 2.1 Level AA. Treat accessibility a
 
 - Every action must work with keyboard alone and follow a logical focus order.
 - Provide a visible focus indicator for every interactive element. Never remove the browser outline without an equally visible replacement.
+- Use the shared `3px` solid `#176b55` focus outline with a `3px` offset; do not suppress it for form controls. Interactive boundaries and the focus ring must retain at least `3:1` contrast against adjacent surfaces.
 - Focus must not become trapped except inside a deliberate, dismissible modal.
 - When validation fails, move focus to or clearly announce the error summary. When a modal opens, move focus into it and restore focus when it closes.
 - Include a skip link when a page gains repeated navigation beyond the current compact header.
