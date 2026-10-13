@@ -119,6 +119,47 @@ class PostUploadLearningChoiceTest extends TestCase
             ->assertDontSee('Outdated source text must not be shown.');
     }
 
+    public function test_learner_can_focus_the_guided_path_on_selected_paper_topics_without_skipping_foundations(): void
+    {
+        [$user, $material] = $this->paper();
+        $foundation = $this->addConcept($material, 'Energy basics', 1);
+        $selected = $this->addConcept($material, 'Conservation of energy', 2);
+        $selected->prerequisites()->attach($foundation, ['source_supported' => true]);
+        $unrelated = $this->addConcept($material, 'Waves', 3);
+
+        $this->actingAs($user)->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('Choose topics to focus on in your study path')
+            ->assertSee('name="focus_concepts[]" value="'.$selected->id.'"', false)
+            ->assertSee('name="focus_material" value="'.$material->uuid.'"', false);
+
+        $this->get(route('study.show', $material->learningSpace).'?'.http_build_query([
+            'focus_material' => $material->uuid,
+            'focus_concepts' => [$selected->id],
+        ]))
+            ->assertOk()
+            ->assertSee('Your chosen topics from '.$material->title)
+            ->assertSeeTextInOrder(['Your recommended next step', 'Energy basics'])
+            ->assertSeeTextInOrder(['Energy basics', 'Conservation of energy', 'Waves'])
+            ->assertSee('Your path keeps any required foundations first. All other topics remain available below.');
+    }
+
+    public function test_topic_focus_rejects_concepts_not_linked_to_the_selected_source_material(): void
+    {
+        [$user, $material] = $this->paper();
+        $otherMaterial = $material->learningSpace->materials()->create([
+            'title' => 'Separate notes', 'role' => 'study_notes', 'private_source_path' => 'materials/test/notes.pdf',
+            'original_filename' => 'notes.pdf', 'mime_type' => 'application/pdf', 'size_bytes' => 20,
+            'status' => 'ready', 'extraction_version' => 1,
+        ]);
+        $otherConcept = $this->addConcept($otherMaterial, 'Unrelated topic', 1);
+
+        $this->actingAs($user)->get(route('study.show', $material->learningSpace).'?'.http_build_query([
+            'focus_material' => $material->uuid,
+            'focus_concepts' => [$otherConcept->id],
+        ]))->assertNotFound();
+    }
+
     public function test_mixed_paper_route_appears_only_when_another_paper_has_ready_questions(): void
     {
         [$user, $material] = $this->paper();

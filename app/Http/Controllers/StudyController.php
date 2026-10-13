@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LearningSpace;
+use App\Models\Material;
 use App\Services\Learning\AssessmentProgress;
 use App\Services\Learning\ChunkRetriever;
 use App\Services\Learning\LearningPathBuilder;
@@ -21,6 +22,27 @@ class StudyController extends Controller
     {
         $this->authorizeSpace($request, $learningSpace);
         $path = $paths->build($learningSpace);
+        $focusConceptIds = [];
+        $focusMaterial = null;
+        if ($request->query->has('focus_concepts') || $request->query->has('focus_material')) {
+            $selection = $request->validate([
+                'focus_material' => ['required', 'string', 'uuid'],
+                'focus_concepts' => ['required', 'array', 'min:1', 'max:30'],
+                'focus_concepts.*' => ['required', 'integer', 'min:1', 'distinct'],
+            ]);
+            $focusMaterial = Material::query()
+                ->where('uuid', $selection['focus_material'])
+                ->where('learning_space_id', $learningSpace->id)
+                ->where('status', 'ready')
+                ->firstOrFail();
+            $focusConceptIds = array_map('intval', $selection['focus_concepts']);
+            $availableConceptIds = $path->items
+                ->filter(fn ($item) => $item->concept->sources->contains(fn ($source) => (int) $source->material_id === (int) $focusMaterial->id
+                    && (int) $source->extraction_version === (int) $focusMaterial->extraction_version
+                    && $source->relevance_status === 'related'))
+                ->pluck('concept_id')->all();
+            abort_unless(array_diff($focusConceptIds, $availableConceptIds) === [], 404);
+        }
         $messages = $learningSpace->tutorMessages()->latest()->limit(20)->get()->reverse()->values();
         $retryQuestion = null;
         $latestMessage = $messages->last();
@@ -31,7 +53,8 @@ class StudyController extends Controller
         $assessmentProgress = $progressService->forSpace($learningSpace, $request->user());
         $tutorCheckProgress = $tutorChecks->forSpace($learningSpace);
         $pathProgress = $progressService->pathSummary($path, $assessmentProgress);
-        $nextStep = $guide->nextStep($path, $assessmentProgress, $tutorCheckProgress);
+        $nextStep = $guide->nextStep($path, $assessmentProgress, $tutorCheckProgress, $focusConceptIds);
+        $focusConcepts = $path->items->whereIn('concept_id', $focusConceptIds)->pluck('concept')->values();
         $suggestedTutorPrompt = null;
         $suggestedTutorConceptId = null;
         if ($request->query('concept') !== null) {
@@ -44,7 +67,7 @@ class StudyController extends Controller
             }
         }
 
-        return view('study.show', compact('learningSpace', 'path', 'messages', 'assessmentProgress', 'tutorCheckProgress', 'pathProgress', 'nextStep', 'suggestedTutorPrompt', 'suggestedTutorConceptId', 'retryQuestion'));
+        return view('study.show', compact('learningSpace', 'path', 'messages', 'assessmentProgress', 'tutorCheckProgress', 'pathProgress', 'nextStep', 'suggestedTutorPrompt', 'suggestedTutorConceptId', 'retryQuestion', 'focusConcepts', 'focusMaterial'));
     }
 
     public function ask(Request $request, LearningSpace $learningSpace, ChunkRetriever $retriever, Tutor $tutor, StudyGuideFallback $fallback, TutorFallbackCopy $fallbackCopy)

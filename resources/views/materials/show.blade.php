@@ -207,6 +207,27 @@
                                 </ul>
                             </details>
                         @endif
+                        <details class="post-upload-topic-selection" @if ($errors->has('focus_concepts')) open @endif>
+                            <summary>Choose topics to focus on in your study path</summary>
+                            <p>Select one or more topics from this paper. Your path will still include any foundations needed first.</p>
+                            <form method="GET" action="{{ route('study.show', $material->learningSpace) }}" class="stack">
+                                <input type="hidden" name="focus_material" value="{{ $material->uuid }}">
+                                <fieldset class="stack">
+                                    <legend>Topics from {{ $material->title }}</legend>
+                                    @foreach ($sourceLinkedConcepts as $concept)
+                                        @php($topicPages = $concept->sources->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->where('relevance_status', 'related')->pluck('page')->filter()->unique()->sort()->values())
+                                        <label class="quiz-option" for="focus-topic-{{ $concept->id }}">
+                                            <input id="focus-topic-{{ $concept->id }}" type="checkbox" name="focus_concepts[]" value="{{ $concept->id }}">
+                                            <span><strong>{{ $concept->name }}</strong>@if ($topicPages->isNotEmpty()) <span class="muted">Page{{ $topicPages->count() > 1 ? 's' : '' }} {{ $topicPages->join(', ') }}</span>@endif</span>
+                                        </label>
+                                    @endforeach
+                                </fieldset>
+                                @if ($errors->has('focus_concepts') || collect(array_keys($errors->getMessages()))->contains(fn ($key) => str_starts_with($key, 'focus_concepts.')))
+                                    <p class="error" role="alert">Choose one or more topics shown from this paper.</p>
+                                @endif
+                                <button type="submit">Use these topics in my study path</button>
+                            </form>
+                        </details>
                         <p class="muted">Only topics connected to pages in this paper that match your study goal are shown here. Question wording is checked separately.</p>
                     </div>
                 @else
