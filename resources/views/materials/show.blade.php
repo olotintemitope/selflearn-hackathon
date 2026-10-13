@@ -311,7 +311,7 @@
                         @foreach ($markingSchemeMatches as $match)
                             <li>
                                 <a href="{{ route('materials.show', $match->markingScheme) }}">{{ $match->markingScheme->title }}</a>
-                                <span class="muted">You linked this answer key to this paper. Questions have not been checked against it yet.</span>
+                                <span class="muted">You linked this answer key to this paper. Check each question against both originals before its answer can affect future scores.</span>
                             </li>
                         @endforeach
                     </ul>
@@ -370,14 +370,14 @@
                         <div>
                             <p><strong>{{ $readyPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('question', $readyPastPaperQuestionCount) }}</strong> can be practised together. Questions needing a check stay out of the session.</p>
                             <fieldset class="practice-duration">
-                                <legend>Choose your practice time. It is not the paper's official time.</legend>
+                                <legend>How long would you like to practise?</legend>
                                 @foreach ([30, 60, 90] as $minutes)
                                     <label><input type="radio" name="duration_minutes" value="{{ $minutes }}" @checked($loop->first)> {{ $minutes }} min</label>
                                 @endforeach
                             </fieldset>
                             @error('duration_minutes')<p class="error" role="alert">Choose 30, 60, or 90 minutes.</p>@enderror
                         </div>
-                        <button>Start exam practice</button>
+                        <button>Start practice</button>
                     </form>
                 @endif
                 @error('paper_practice')<p class="error" role="alert">{{ $message }}</p>@enderror
@@ -386,7 +386,7 @@
                 @else
                     <ol class="past-paper-question-list">
                         @foreach ($pastPaperQuestions as $question)
-                            <li class="past-paper-question-item">
+                            <li id="past-paper-question-{{ $question->id }}" class="past-paper-question-item">
                                 <div class="past-paper-question-heading">
                                     <h3>Question {{ $question->question_number }} · Page {{ $question->page ?? 'unknown' }}</h3>
                                     <span class="status status-{{ in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true) ? 'ready' : 'pending' }}">
@@ -425,6 +425,17 @@
                                     <blockquote data-render-math>{{ $question->source_text }}</blockquote>
                                     <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
                                 </details>
+                                @if ($verifiedAnswer = $verifiedAnswers->get($question->id))
+                                    <div class="answer-feedback">
+                                        <strong>Answer checked by you against a linked key</strong>
+                                        <p>Answer: {{ collect($verifiedAnswer->option_ids)->join(', ') }} · {{ $verifiedAnswer->markingSchemeMatch->markingScheme->title }} · page {{ $verifiedAnswer->source_page }}</p>
+                                        <blockquote class="answer-source-transcription">{{ $verifiedAnswer->answer_excerpt }}</blockquote>
+                                        <p class="muted">This checked answer can be used in future practice.</p>
+                                    </div>
+                                @endif
+                                @if ($markingSchemeMatches->isNotEmpty() && in_array($question->question_type, ['single_choice', 'multiple_select', 'true_false'], true) && in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true))
+                                    <a class="button-link past-paper-question-action" href="{{ route('past-paper-questions.verify-answer', [$material, $question]) }}">{{ $verifiedAnswer ? 'Review checked answer' : 'Check answer against the key' }}</a>
+                                @endif
                                 @if ($question->review_status === 'needs_review')
                                     <details class="past-paper-question-review">
                                         <summary>Check or correct this question</summary>
@@ -460,7 +471,7 @@
                             </li>
                         @endforeach
                     </ol>
-                    <p class="muted">Clear questions can be practised together in paper order with a learner-selected practice timer. This is not an official or proctored exam, and the timer does not represent verified paper timing. Questions needing review stay out.</p>
+                    <p class="muted">Clear questions can be practised together in paper order with a learner-selected practice timer. Questions needing review stay out until they are checked.</p>
                 @endif
             </section>
         @endif

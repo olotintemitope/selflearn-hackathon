@@ -34,13 +34,13 @@
                 </fieldset>
 
                 <fieldset class="practice-duration">
-                    <legend>Choose your practice time. This is not official paper timing.</legend>
+                    <legend>How long would you like to practise?</legend>
                     @foreach ([30, 60, 90] as $minutes)
                         <label><input type="radio" name="duration_minutes" value="{{ $minutes }}" @checked(old('duration_minutes', 30) == $minutes)> {{ $minutes }} minutes</label>
                     @endforeach
                 </fieldset>
                 @error('duration_minutes')<p class="error" role="alert">Choose 30, 60, or 90 minutes.</p>@enderror
-                <p class="muted">Questions follow the papers you select, then each paper’s page order. Year and marks are clues from the file name or page. They have not been checked against official records, and marks are not added into a score.</p>
+                <p class="muted">Questions follow the papers you select, then each paper’s page order. Year and marks are shown when they can be read from the paper.</p>
                 <button type="submit">Start mixed practice</button>
             </form>
         @endif

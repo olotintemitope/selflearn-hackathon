@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PastPaperMarkingSchemeMatch extends Model
 {
@@ -28,5 +29,10 @@ class PastPaperMarkingSchemeMatch extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function verifiedAnswers(): HasMany
+    {
+        return $this->hasMany(PastPaperVerifiedAnswer::class, 'marking_scheme_match_id');
     }
 }

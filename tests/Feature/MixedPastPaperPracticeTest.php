@@ -48,8 +48,8 @@ class MixedPastPaperPracticeTest extends TestCase
             ->assertSee('Mixed-paper practice')
             ->assertSee('Physics 2021 · Question 1 · Page 1')
             ->assertSee('Physics 2022 · Question 1 · Page 1')
-            ->assertSee('Year 2022 from the paper title or file name, not checked against official records.')
-            ->assertSee('Practice timer, not official paper timing')
+            ->assertSee('Year 2022 from the paper title or file name.')
+            ->assertSee('Your answers are saved as you practise. Submit when you are ready.')
             ->assertDontSee('A is the answer')
             ->assertDontSee('total marks');
 
@@ -67,7 +67,7 @@ class MixedPastPaperPracticeTest extends TestCase
             ->assertSee('Your mixed-paper practice')
             ->assertSee('Physics 2021 · Question 1 · Page 1')
             ->assertSee('Physics 2022 · Question 1 · Page 1')
-            ->assertSee('Year 2022 from the paper title or file name, not checked against official records.')
+            ->assertSee('Year 2022 from the paper title or file name.')
             ->assertSee('Open this original paper')
             ->assertSee('A is the answer');
 

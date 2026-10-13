@@ -42,4 +42,9 @@ class PastPaperQuestion extends Model
     {
         return $this->hasMany(PastPaperAttempt::class, 'past_paper_question_id');
     }
+
+    public function verifiedAnswers(): HasMany
+    {
+        return $this->hasMany(PastPaperVerifiedAnswer::class, 'past_paper_question_id');
+    }
 }

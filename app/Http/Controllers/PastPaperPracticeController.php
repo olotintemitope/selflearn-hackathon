@@ -135,7 +135,7 @@ class PastPaperPracticeController extends Controller
 
     public function paperResults(Request $request, PastPaperPracticeRun $run)
     {
-        $run->load(['material', 'attempts']);
+        $run->load(['material', 'attempts.verifiedAnswer.markingSchemeMatch.markingScheme', 'attempts.verifiedAnswer.markingSchemeChunk']);
         $material = $run->material;
         $this->authorize('view', $material);
         abort_unless($run->user_id === $request->user()->id, 404);
@@ -205,7 +205,7 @@ class PastPaperPracticeController extends Controller
 
     public function result(Request $request, PastPaperAttempt $attempt)
     {
-        $attempt->load(['question.material.learningSpace', 'question.sourceChunk']);
+        $attempt->load(['question.material.learningSpace', 'question.sourceChunk', 'verifiedAnswer.markingSchemeMatch.markingScheme', 'verifiedAnswer.markingSchemeChunk']);
         $material = $attempt->question->material;
         $this->authorize('view', $material);
         abort_unless($attempt->user_id === $request->user()->id, 404);
