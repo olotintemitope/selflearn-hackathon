@@ -27,3 +27,8 @@ Test deterministic behavior and failures with provider fakes; exercise the visib
 - [x] Mixed pages retain provenance and do not duplicate extracted content.
 - [x] Markdown/LaTeX survive normalization, chunking and learner rendering.
 - [x] Quality warnings and extractor metadata are persisted; failures retain originals.
+- [x] Broad study spaces use the first clear upload with source-backed concepts to establish a topic anchor. Later pages are compared with concept names, not descriptions. Only a strong normalized name match enters the study path automatically; partial matches stay reviewable and pages with no name match are kept separate. Later uploads wait for review while an earlier upload is queued or processing; if an earlier upload finishes without concepts, the next clear upload can establish the anchor. Tests cover Physics continuity and Food/Nutrition and ICT pages against a generic goal without a paid classifier call.
+
+## Current limitation
+
+The local topic anchor uses word overlap, not semantic inference. A live one-page Physics and Home Economics comparison kept the food page out of the Physics path, but its partial match was held for learner review rather than confidently marked separate. This is one selected upload pair, not a representative corpus evaluation. A genuinely related new subtopic with little shared wording can be kept out of the current path. Its original upload remains available, and its page can be reviewed.

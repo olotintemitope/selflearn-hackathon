@@ -216,13 +216,36 @@ class ProcessMaterial implements ShouldQueue
         $metadata['processing_stage'] = $pending->isNotEmpty() ? 'relevance' : 'concepts';
         $material->update(['metadata' => $metadata]);
         if ($pending->isNotEmpty()) {
-            $context = $material->learningSpace->concepts()->orderBy('name')->get(['name', 'description'])
-                ->map(fn ($concept) => ['name' => $concept->name, 'description' => $concept->description])->all();
-            $decisions = $relevance->classify(
-                $material->learningSpace,
-                $pending->map(fn ($chunk) => ['id' => $chunk->id, 'content' => $chunk->content, 'page' => $chunk->page])->all(),
-                $context,
-            );
+            $context = $this->relevanceConceptContext($material, $relevance);
+            $chunks = $pending->map(fn ($chunk) => ['id' => $chunk->id, 'content' => $chunk->content, 'page' => $chunk->page])->all();
+            $space = $material->learningSpace;
+            $earlierMaterialIsProcessing = $space->materials()
+                ->whereIn('materials.status', ['pending', 'processing'])
+                ->where(function ($query) use ($material): void {
+                    $query->where('materials.created_at', '<', $material->created_at)
+                        ->orWhere(function ($tie) use ($material): void {
+                            $tie->where('materials.created_at', $material->created_at)
+                                ->where('materials.id', '<', $material->id);
+                        });
+                })
+                ->exists();
+
+            // When another upload arrived first but has not established a
+            // source-backed topic yet, keep this one reviewable. This avoids
+            // concurrent first uploads both becoming the anchor by accident.
+            if ($relevance instanceof LocalMaterialRelevanceClassifier
+                && $relevance->hasBroadGoal($space)
+                && $context === []
+                && $earlierMaterialIsProcessing) {
+                $decisions = array_map(fn (array $chunk) => [
+                    'chunk_id' => $chunk['id'],
+                    'status' => 'possibly_related',
+                    'confidence' => 0.5,
+                    'reason' => 'The first material is still being prepared, so this page is waiting for a topic match.',
+                ], $chunks);
+            } else {
+                $decisions = $relevance->classify($space, $chunks, $context);
+            }
             DB::transaction(function () use ($pending, $decisions): void {
                 foreach ($decisions as $decision) {
                     $pending->firstWhere('id', $decision['chunk_id'])->update([
@@ -287,6 +310,44 @@ class ProcessMaterial implements ShouldQueue
         if ($material->role === 'past_paper') {
             ($pastPaperQuestionIndexer ?? app(PastPaperQuestionIndexer::class))->index($material->fresh());
         }
+    }
+
+    /**
+     * Broad study spaces need one stable, source-grounded topic anchor. Later
+     * concepts from unrelated pages must not broaden the anchor and make a
+     * third subject appear related just because it already contaminated the
+     * path. Specific goals still use the full concept set.
+     *
+     * @return array<int, array{name: string, description: string}>
+     */
+    private function relevanceConceptContext(Material $material, MaterialRelevanceClassifier $classifier): array
+    {
+        $space = $material->learningSpace;
+        $concepts = $space->concepts();
+
+        if ($classifier instanceof LocalMaterialRelevanceClassifier && $classifier->hasBroadGoal($space)) {
+            $anchorMaterialId = $space->materials()
+                ->where('materials.id', '!=', $material->id)
+                ->where('materials.status', 'ready')
+                ->whereHas('chunks', fn ($chunks) => $chunks
+                    ->where('relevance_status', 'related')
+                    ->whereColumn('material_chunks.extraction_version', 'materials.extraction_version')
+                    ->whereHas('concepts'))
+                ->orderBy('materials.created_at')
+                ->orderBy('materials.id')
+                ->value('materials.id');
+
+            if ($anchorMaterialId === null) {
+                $concepts->whereRaw('1 = 0');
+            } else {
+                $concepts->whereHas('sources', fn ($sources) => $sources
+                    ->where('material_id', $anchorMaterialId)
+                    ->where('relevance_status', 'related'));
+            }
+        }
+
+        return $concepts->orderBy('name')->get(['name', 'description'])
+            ->map(fn ($concept) => ['name' => $concept->name, 'description' => $concept->description])->all();
     }
 
     public function failed(?Throwable $exception): void
