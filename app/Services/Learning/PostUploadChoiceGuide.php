@@ -78,7 +78,7 @@ final class PostUploadChoiceGuide
         if ($practiceAvailable && $learningAvailable) {
             return [
                 'route' => self::INTENT_LEARN_FIRST,
-                'reason' => self::countAvailability($relatedConceptCount, 'related idea').' to learn first. You can also practise '.self::countLabel($readyQuestionCount, 'question').' now if you prefer.',
+                'reason' => 'You have '.self::countLabel($relatedConceptCount, 'related idea').' to learn first. You can also practise '.self::countLabel($readyQuestionCount, 'question').' now if you prefer.',
             ];
         }
 

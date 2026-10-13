@@ -7,6 +7,7 @@ use App\Jobs\ProcessMaterial;
 use App\Models\Material;
 use App\Models\PastPaperQuestion;
 use App\Services\Learning\PastPaperQuestionIndexer;
+use App\Services\Learning\PostUploadChoiceGuide;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -40,7 +41,7 @@ class MaterialController extends Controller
         return redirect()->route('materials.show', $material)->with('status', 'Material added. We’ll prepare its concepts for your study guide.');
     }
 
-    public function show(Request $request, Material $material)
+    public function show(Request $request, Material $material, PostUploadChoiceGuide $choiceGuide)
     {
         $this->authorize('view', $material);
         $material->load(['chunks', 'learningSpace.concepts.sources', 'learningSpace.concepts.prerequisites']);
@@ -52,8 +53,44 @@ class MaterialController extends Controller
             ->whereHas('sources', fn ($query) => $query->where('material_chunks.material_id', $material->id)
                 ->where('material_chunks.relevance_status', 'related'))
             ->exists();
+        $sourceLinkedConcepts = $material->learningSpace->concepts
+            ->filter(fn ($concept) => $concept->sources->contains(fn ($source) => (int) $source->material_id === (int) $material->id
+                && (int) $source->extraction_version === (int) $material->extraction_version
+                && $source->relevance_status === 'related'))
+            ->values();
+        $heldPastPaperQuestionCount = $pastPaperQuestions
+            ->whereNotIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)
+            ->count();
+        $otherReadyPaperCount = $material->role === 'past_paper' && $material->status === 'ready'
+            ? $material->learningSpace->materials()
+                ->where('materials.id', '!=', $material->getKey())
+                ->where('role', 'past_paper')
+                ->where('status', 'ready')
+                ->whereHas('pastPaperQuestions', fn ($query) => $query
+                    ->whereColumn('past_paper_questions.extraction_version', 'materials.extraction_version')
+                    ->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES))
+                ->count()
+            : 0;
+        $mixedReadyPaperCount = $otherReadyPaperCount + ($readyPastPaperQuestionCount > 0 ? 1 : 0);
+        $choiceIntent = $request->query('learning_intent');
+        if (! in_array($choiceIntent, ['practise', 'learn_first', 'unsure'], true)) {
+            $choiceIntent = null;
+        }
+        $learningChoice = $material->role === 'past_paper' && $material->status === 'ready'
+            && $choiceIntent !== null
+                ? $choiceGuide->recommend(
+                    $choiceIntent,
+                    $readyPastPaperQuestionCount,
+                    $heldPastPaperQuestionCount,
+                    $sourceLinkedConcepts->count(),
+                )
+                : null;
 
-        return view('materials.show', compact('material', 'pastPaperQuestions', 'readyPastPaperQuestionCount', 'hasSourceLinkedConcept'));
+        return view('materials.show', compact(
+            'material', 'pastPaperQuestions', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
+            'hasSourceLinkedConcept', 'sourceLinkedConcepts', 'otherReadyPaperCount', 'mixedReadyPaperCount',
+            'choiceIntent', 'learningChoice',
+        ));
     }
 
     public function indexPastPaperQuestions(Request $request, Material $material, PastPaperQuestionIndexer $indexer)

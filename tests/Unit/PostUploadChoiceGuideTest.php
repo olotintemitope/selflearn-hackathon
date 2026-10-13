@@ -44,7 +44,7 @@ class PostUploadChoiceGuideTest extends TestCase
                 'unsure', 0, 0, 3, 'learn_first', 'There are 3 related ideas ready, so you could start by learning them.',
             ],
             'unsure with both routes available gently suggests learning first' => [
-                'unsure', 3, 0, 2, 'learn_first', 'There are 2 related ideas ready to learn first. You can also practise 3 questions now if you prefer.',
+                'unsure', 3, 0, 2, 'learn_first', 'You have 2 related ideas to learn first. You can also practise 3 questions now if you prefer.',
             ],
             'unsure with no available route' => [
                 'unsure', 0, 2, 0, null, 'Some practice questions need a quick review. No related ideas are ready to learn yet.',
