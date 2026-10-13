@@ -1,6 +1,6 @@
 <x-layouts.app :title="$material->title.' | SelfLearn'">
     <a href="{{ route('materials.index') }}#space-{{ $material->learning_space_id }}-materials">← Back to this study space</a>
-    <section class="hero compact">
+    <section class="hero compact material-hero">
         <p class="eyebrow">{{ $material->learningSpace->title }} · {{ $material->roleLabel() }}</p>
         <h1>{{ $material->title }}</h1>
         <div class="actions"><span class="status status-{{ $material->status }}">{{ ucfirst($material->status) }}</span><a href="{{ route('materials.download', $material) }}">Download original</a></div>
@@ -191,19 +191,19 @@
                 @if ($pastPaperQuestions->isEmpty())
                     <p class="muted">No question list is ready yet. Choose “Find questions on this paper” to build one.</p>
                 @else
-                    <ol class="stack">
+                    <ol class="past-paper-question-list">
                         @foreach ($pastPaperQuestions as $question)
-                            <li class="stack">
-                                <div class="section-heading">
+                            <li class="past-paper-question-item">
+                                <div class="past-paper-question-heading">
                                     <h3>Question {{ $question->question_number }} · Page {{ $question->page ?? 'unknown' }}</h3>
-                                    @if ($question->marks)
-                                        <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper</p>
-                                    @endif
                                     <span class="status status-{{ in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true) ? 'ready' : 'pending' }}">
                                         {{ $question->review_status === 'owner_checked' ? 'Checked by you' : ($question->review_status === 'ready' ? 'Ready to practise' : 'Needs review') }}
                                     </span>
                                 </div>
-                                <p class="muted">{{ match ($question->question_type) {
+                                @if ($question->marks)
+                                    <p class="past-paper-question-marks muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper</p>
+                                @endif
+                                <p class="past-paper-question-meta muted">{{ match ($question->question_type) {
                                     'single_choice' => 'Single-answer multiple choice',
                                     'multiple_select' => 'Select multiple answers',
                                     'true_false' => 'True or false',
@@ -218,22 +218,22 @@
                                 @if ($question->review_reason)
                                     <p class="notice">{{ $question->review_reason }} Check this wording against the original before practising.</p>
                                 @endif
-                                <blockquote data-render-math>{{ $question->prompt }}</blockquote>
+                                <blockquote class="past-paper-question-prompt" data-render-math>{{ $question->prompt }}</blockquote>
                                 @if ($question->options)
-                                    <ol type="A">
+                                    <ol class="past-paper-question-options" type="A">
                                         @foreach ($question->options as $option)
                                             <li data-render-math>{{ $option['text'] }}</li>
                                         @endforeach
                                     </ol>
                                 @endif
-                                <details>
+                                <details class="past-paper-question-source">
                                     <summary>Compare with the text saved from this page</summary>
                                     <p><strong>Question text</strong></p>
                                     <blockquote data-render-math>{{ $question->source_text }}</blockquote>
                                     <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
                                 </details>
                                 @if ($question->review_status === 'needs_review')
-                                    <details>
+                                    <details class="past-paper-question-review">
                                         <summary>Check or correct this question</summary>
                                         <p>Compare with the original paper. Your correction will not change the saved page text or page reference. The answer key will not be used for scoring.</p>
                                         <form method="POST" action="{{ route('materials.past-paper-questions.review', [$material, $question]) }}" class="stack">
@@ -260,7 +260,7 @@
                                     </details>
                                 @endif
                                 @if (in_array($question->review_status, App\Models\PastPaperQuestion::PRACTICE_READY_STATUSES, true))
-                                    <a class="button-link" href="{{ route('past-paper-questions.practice', [$material, $question]) }}">Practise this question</a>
+                                    <a class="button-link past-paper-question-action" href="{{ route('past-paper-questions.practice', [$material, $question]) }}">Practise this question</a>
                                 @else
                                     <p class="muted">This question is not available for practice until its wording and structure have been checked.</p>
                                 @endif

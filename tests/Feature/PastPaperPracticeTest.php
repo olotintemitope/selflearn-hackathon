@@ -105,6 +105,8 @@ class PastPaperPracticeTest extends TestCase
         $originalPage = $question->page;
         $this->actingAs($user)->get(route('materials.show', $material))
             ->assertOk()
+            ->assertSee('past-paper-question-list', false)
+            ->assertSee('past-paper-question-item', false)
             ->assertSee('Check or correct this question')
             ->assertSee('The answer key will not be used for scoring.');
 

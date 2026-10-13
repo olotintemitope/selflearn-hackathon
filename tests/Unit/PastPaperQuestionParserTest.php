@@ -103,6 +103,8 @@ class PastPaperQuestionParserTest extends TestCase
         $this->assertSame('single_choice', $candidates[0]['question_type']);
         $this->assertCount(4, $candidates[0]['options']);
         $this->assertSame('cold, hot', $candidates[0]['options'][0]['text']);
+        $this->assertStringContainsString('from a __ body to a __ body', $candidates[0]['prompt']);
+        $this->assertStringNotContainsString('\\_', $candidates[0]['prompt']);
         $this->assertSame('ready', $candidates[0]['review_status']);
         $this->assertSame('hotness, coldness', $candidates[2]['options'][1]['text']);
         $this->assertSame('needs_review', $candidates[3]['review_status']);

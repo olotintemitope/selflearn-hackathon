@@ -10,14 +10,14 @@ namespace App\Services\Learning;
  */
 final class PastPaperQuestionParser
 {
-    public const VERSION = 'page-question-parser-v2';
+    public const VERSION = 'page-question-parser-v3';
 
     /**
      * @return array<int, array{question_number:string, prompt:string, source_text:string, question_type:string, options:array<int, array{id:string,text:string}>, marks:?int, expected_answer:?string, answer_source:string, review_status:string, review_reason:?string, confidence:float}>
      */
     public function parse(string $content, ?float $ocrConfidence = null): array
     {
-        $content = $this->normalizeLatexLists(str_replace(["\r\n", "\r"], "\n", trim($content)));
+        $content = $this->normalizeExtractedBlanks($this->normalizeLatexLists(str_replace(["\r\n", "\r"], "\n", trim($content))));
         if ($content === '') {
             return [];
         }
@@ -143,6 +143,11 @@ final class PastPaperQuestionParser
             },
             $content,
         ) ?? $content;
+    }
+
+    private function normalizeExtractedBlanks(string $content): string
+    {
+        return preg_replace_callback('/(?:\\\\_){2,}/u', fn (array $match): string => str_repeat('_', intdiv(strlen($match[0]), 2)), $content) ?? $content;
     }
 
     private function headingQuestionNumber(string $content): ?string

@@ -1,7 +1,7 @@
 <x-layouts.app :title="'Past-paper practice | SelfLearn'">
     <div class="stack past-paper-practice">
         <a href="{{ route('materials.show', $material) }}#past-paper-questions-heading">Back to {{ $material->title }}</a>
-        <header>
+        <header class="past-paper-practice-header">
             <p class="eyebrow">{{ $material->title }} · Past-paper practice</p>
             <h1>Question {{ $question->question_number }}</h1>
             <p id="past-paper-practice-instructions" class="lede">Page {{ $question->page ?? 'not specified' }} of your uploaded paper. This is one practice question, not a full exam.</p>

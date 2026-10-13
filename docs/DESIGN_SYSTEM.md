@@ -69,6 +69,10 @@ Maintain readable contrast. Do not communicate status by color alone: pair color
 Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2rem`, `3rem`, and `5rem` steps.
 
 - Use at least `1.5rem` between separate question surfaces, `1.25rem` between a prompt, its source context, and its answers, and `0.75rem` between answer options. Keep at least `1.5rem` between the final question and the primary submit button.
+- In a question bank, group each question in a padded, borderless paper surface. Separate the heading/status, metadata, prompt, choices, source disclosure, and practice action with a consistent `1rem` grid gap; keep at least `1.5rem` between question surfaces. Keep metadata readable and the prompt line length bounded. Never use full-width action buttons for a single question unless the learner is in a focused full-exam flow.
+- Material titles use the page-title scale, even when the uploaded filename is long. Wrap at word boundaries and keep the title block to a comfortable reading width instead of using display-size typography for filenames.
+- Render OCR answer blanks as visible underscores or a clearly spaced blank, never as raw LaTeX escape sequences such as `\\_\\_`.
+- On a single-question practice page, keep the paper name, question number, page note, prompt, source detail, answer controls, and submit action as distinct blocks. Use at least `0.75rem` between title metadata and `1.25rem` around the question and answer regions; prevent a long paper title or prompt from forcing horizontal overflow.
 - Do not use em dash punctuation in learner-facing or generated text. Prefer a period, colon, comma, or parentheses.
 
 - Page content is capped at `70rem` with at least `1rem` side gutters.
