@@ -49,16 +49,6 @@
                 @csrf
                 <fieldset id="past-paper-question-content" class="quiz-question">
                     <legend id="past-paper-prompt"><span class="eyebrow">{{ ucfirst(str_replace('_', ' ', $question->question_type)) }}</span><span class="quiz-prompt" data-render-math>{{ $question->prompt }}</span></legend>
-                    <p class="quiz-source-context"><span>Source:</span> {{ $material->title }}
-                        @if ($question->paper_year)
-                            · year {{ $question->paper_year }} from upload label
-                        @endif
-                        · page {{ $question->page ?? 'not specified' }} · question {{ $question->question_number }}
-                        @if ($question->marks)
-                            · {{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper
-                        @endif
-                    </p>
-
                     @if (in_array($question->question_type, ['single_choice', 'true_false'], true))
                         <div class="quiz-options">
                             @foreach ($question->options ?? [] as $option)
@@ -86,6 +76,16 @@
                         <label for="past-paper-response">Your answer</label>
                         <textarea id="past-paper-response" name="value" rows="6" maxlength="8000" @disabled($attempt) @if (! $attempt) required @endif>{{ $attempt?->response['value'] ?? old('value') }}</textarea>
                     @endif
+
+                    <p class="quiz-source-context"><span>From your paper:</span> {{ $material->title }}
+                        @if ($question->paper_year)
+                            · year {{ $question->paper_year }} from upload label
+                        @endif
+                        · page {{ $question->page ?? 'not specified' }} · question {{ $question->question_number }}
+                        @if ($question->marks)
+                            · {{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper
+                        @endif
+                    </p>
 
                     @error('value')<p class="error" role="alert">{{ $message }}</p>@enderror
 

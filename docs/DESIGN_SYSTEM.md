@@ -73,6 +73,7 @@ Use a four-pixel base rhythm. Prefer `0.5rem`, `0.75rem`, `1rem`, `1.5rem`, `2re
 - Material titles use the page-title scale, even when the uploaded filename is long. Wrap at word boundaries and keep the title block to a comfortable reading width instead of using display-size typography for filenames.
 - Render OCR answer blanks as visible underscores or a clearly spaced blank, never as raw LaTeX escape sequences such as `\\_\\_`.
 - On a single-question practice page, keep the paper name, question number, page note, prompt, source detail, answer controls, and submit action as distinct blocks. Use at least `0.75rem` between title metadata and `1.25rem` around the question and answer regions; prevent a long paper title or prompt from forcing horizontal overflow.
+- Keep a question's prompt directly followed by its answer choices. Put paper and page attribution after the answer choices, never between the question and its answers.
 - Do not use em dash punctuation in learner-facing or generated text. Prefer a period, colon, comma, or parentheses.
 
 - Page content is capped at `70rem` with at least `1rem` side gutters.

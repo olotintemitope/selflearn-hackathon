@@ -26,6 +26,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('data-read-aloud-target="past-paper-question-content"', false)
             ->assertSee('Submit answer')
             ->assertSee('Which option is correct?')
+            ->assertSeeInOrder(['Which option is correct?', 'First choice', 'From your paper:', 'Submit answer'])
             ->assertDontSee('A is the answer');
 
         $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'A'])
