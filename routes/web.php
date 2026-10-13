@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/materials/{material}/relevance', [MaterialController::class, 'resolveRelevance'])->name('materials.relevance');
     Route::post('/materials/{material}/past-paper-questions/index', [MaterialController::class, 'indexPastPaperQuestions'])->name('materials.past-paper-questions.index');
     Route::post('/materials/{material}/past-paper-questions/{question}/review', [MaterialController::class, 'reviewPastPaperQuestion'])->name('materials.past-paper-questions.review');
+    Route::post('/materials/{material}/marking-schemes', [MaterialController::class, 'matchMarkingScheme'])->name('materials.marking-schemes.match');
     Route::post('/materials/{material}/past-paper-practice', [PastPaperPracticeController::class, 'startPaper'])->name('past-paper-practice.start');
     Route::get('/materials/{material}/past-paper-practice/{run}', [PastPaperPracticeController::class, 'showPaper'])->name('past-paper-practice.show');
     Route::post('/materials/{material}/past-paper-practice/{run}', [PastPaperPracticeController::class, 'submitPaper'])->name('past-paper-practice.submit');

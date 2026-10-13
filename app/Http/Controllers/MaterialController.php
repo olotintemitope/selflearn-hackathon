@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMaterialRequest;
 use App\Jobs\ProcessMaterial;
 use App\Models\Material;
+use App\Models\PastPaperMarkingSchemeMatch;
 use App\Models\PastPaperQuestion;
 use App\Services\Learning\PastPaperQuestionIndexer;
 use App\Services\Learning\PostUploadChoiceGuide;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class MaterialController extends Controller
 {
@@ -47,6 +49,24 @@ class MaterialController extends Controller
         $material->load(['chunks', 'learningSpace.concepts.sources', 'learningSpace.concepts.prerequisites']);
         $pastPaperQuestions = $material->role === 'past_paper' && $material->status === 'ready'
             ? $material->pastPaperQuestions()->where('extraction_version', $material->extraction_version)->orderBy('page')->orderBy('question_number')->get()
+            : collect();
+        $markingSchemeMatches = $material->role === 'past_paper' && $material->status === 'ready'
+            ? $material->confirmedMarkingSchemes()
+                ->with('markingScheme')
+                ->where('paper_extraction_version', $material->extraction_version)
+                ->whereHas('markingScheme', fn ($query) => $query
+                    ->where('role', 'marking_scheme')
+                    ->where('status', 'ready')
+                    ->whereColumn('materials.extraction_version', 'past_paper_marking_scheme_matches.marking_scheme_extraction_version'))
+                ->latest()
+                ->get()
+            : collect();
+        $availableMarkingSchemes = $material->role === 'past_paper' && $material->status === 'ready'
+            ? $material->learningSpace->materials()
+                ->where('role', 'marking_scheme')
+                ->where('status', 'ready')
+                ->orderBy('title')
+                ->get()
             : collect();
         $readyPastPaperQuestionCount = $pastPaperQuestions->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)->count();
         $hasSourceLinkedConcept = $material->learningSpace->concepts()
@@ -93,7 +113,7 @@ class MaterialController extends Controller
                 : null;
 
         return view('materials.show', compact(
-            'material', 'pastPaperQuestions', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
+            'material', 'pastPaperQuestions', 'markingSchemeMatches', 'availableMarkingSchemes', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
             'hasSourceLinkedConcept', 'sourceLinkedConcepts', 'otherReadyPaperCount', 'mixedReadyPaperCount',
             'choiceIntent', 'learningChoice', 'otherReadyMaterialCount',
         ));
@@ -156,6 +176,38 @@ class MaterialController extends Controller
         });
 
         return back()->with('status', 'Your checked question is ready to practise. It will not be automatically scored because its answer key has not been verified.');
+    }
+
+    public function matchMarkingScheme(Request $request, Material $material)
+    {
+        $this->authorize('update', $material);
+        abort_unless($material->role === 'past_paper' && $material->status === 'ready', 409);
+
+        $validated = $request->validate([
+            'marking_scheme_uuid' => [
+                'required',
+                'uuid',
+                Rule::exists('materials', 'uuid')
+                    ->where('learning_space_id', $material->learning_space_id)
+                    ->where('role', 'marking_scheme')
+                    ->where('status', 'ready'),
+            ],
+            'confirm_match' => ['accepted'],
+        ]);
+
+        $scheme = $material->learningSpace->materials()->where('uuid', $validated['marking_scheme_uuid'])->firstOrFail();
+        abort_unless($scheme->role === 'marking_scheme' && $scheme->status === 'ready', 404);
+
+        PastPaperMarkingSchemeMatch::query()->firstOrCreate([
+            'paper_material_id' => $material->id,
+            'marking_scheme_material_id' => $scheme->id,
+            'paper_extraction_version' => $material->extraction_version,
+            'marking_scheme_extraction_version' => $scheme->extraction_version,
+        ], [
+            'confirmed_by' => $request->user()->id,
+        ]);
+
+        return back()->with('status', 'Answer key linked to this paper. It will not affect practice scores until each question is checked against the key.');
     }
 
     public function download(Request $request, Material $material)

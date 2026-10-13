@@ -303,6 +303,43 @@
                     </aside>
                 @endif
             </section>
+            <section class="card stack" aria-labelledby="marking-scheme-heading">
+                <h2 id="marking-scheme-heading">Answer key for this paper</h2>
+                <p>Connect an answer key to this exact paper. Linking files alone does not verify answers or change practice scores.</p>
+                @if ($markingSchemeMatches->isNotEmpty())
+                    <ul class="stack">
+                        @foreach ($markingSchemeMatches as $match)
+                            <li>
+                                <a href="{{ route('materials.show', $match->markingScheme) }}">{{ $match->markingScheme->title }}</a>
+                                <span class="muted">You linked this answer key to this paper. Questions have not been checked against it yet.</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <p class="muted">No answer key is linked to this paper yet. Any answers found in the paper remain unverified.</p>
+                @endif
+                @if ($availableMarkingSchemes->isNotEmpty())
+                    <form method="POST" action="{{ route('materials.marking-schemes.match', $material) }}" class="stack">
+                        @csrf
+                        <label for="marking-scheme-uuid">Choose an answer key from this study space</label>
+                        <select id="marking-scheme-uuid" name="marking_scheme_uuid" required>
+                            <option value="">Choose an answer key</option>
+                            @foreach ($availableMarkingSchemes as $scheme)
+                                <option value="{{ $scheme->uuid }}" @selected((string) old('marking_scheme_uuid') === (string) $scheme->uuid)>{{ $scheme->title }}</option>
+                            @endforeach
+                        </select>
+                        @error('marking_scheme_uuid')<p class="error" role="alert">Choose a ready answer key from this study space.</p>@enderror
+                        <label class="quiz-option" for="confirm-marking-scheme">
+                            <input id="confirm-marking-scheme" type="checkbox" name="confirm_match" value="1" @checked(old('confirm_match')) required>
+                            I confirm this answer key belongs to this exact paper.
+                        </label>
+                        @error('confirm_match')<p class="error" role="alert">Confirm that this answer key belongs to this paper.</p>@enderror
+                        <button>Link answer key</button>
+                    </form>
+                @else
+                    <p class="muted">When a ready answer key is in this study space, you can link it here.</p>
+                @endif
+            </section>
         @endif
         @if ($material->role === 'past_paper')
             <section class="stack" aria-labelledby="past-paper-questions-heading">
