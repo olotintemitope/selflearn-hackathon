@@ -23,7 +23,7 @@
             @endif
             <p id="paper-result-summary" class="lede">{{ $questions->count() }} questions · {{ $correctCount }} matched · {{ $incorrectCount }} did not match · {{ $ungradedCount }} saved without a score · {{ $unansweredCount }} unanswered.</p>
             <x-read-aloud target="paper-result-summary" language="en" />
-            <p class="muted">A match compares your answer with text found in your paper. It is not an official mark. Written answers are saved without a score because no matching marking guide is available.</p>
+            <p class="muted">Each result shows whether it used a key you checked or answer text found in the paper. Written answers remain unscored.</p>
         </header>
 
         @foreach ($questions as $question)
@@ -32,7 +32,7 @@
             <section id="paper-result-question-{{ $question->id }}" class="quiz-question-surface card" aria-labelledby="result-question-{{ $question->id }}">
                 <h2 id="result-question-{{ $question->id }}">{{ $sourcePaper->title }} · Question {{ $question->question_number }} · Page {{ $question->page ?? 'not specified' }}</h2>
                 @if ($question->paper_year)
-                    <p class="muted">Year {{ $question->paper_year }} from the paper title or file name, not checked against official records.</p>
+                    <p class="muted">Year {{ $question->paper_year }} from the paper title or file name.</p>
                 @endif
                 @if ($question->marks)
                     <p class="muted">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper.</p>
@@ -46,11 +46,20 @@
                 @if (! $attempt)
                     <p class="notice">{{ $timedOut ? 'This question was unanswered when time expired.' : 'You left this question unanswered.' }}</p>
                 @elseif ($attempt->outcome === 'correct')
-                    <p class="answer-correct">Your answer matches text found in the paper. This has not been checked against an official marking guide.</p>
+                    <p class="answer-correct">{{ $attempt->marking_basis === 'confirmed_marking_scheme' ? 'Your answer matches the answer key you checked against the original.' : 'Your answer matches text found in the paper. This has not been checked against a marking guide.' }}</p>
                 @elseif ($attempt->outcome === 'incorrect')
-                    <p class="answer-incorrect">Your answer does not match the answer text found in this paper. The text may not match your original paper exactly.</p>
+                    <p class="answer-incorrect">{{ $attempt->marking_basis === 'confirmed_marking_scheme' ? 'Your answer does not match the answer key you checked against the original.' : 'Your answer does not match the answer text found in this paper. The text may not match your original paper exactly.' }}</p>
                 @else
                     <p class="notice">Your response was saved, but there was no clear answer in the paper to check it against.</p>
+                @endif
+                @if ($attempt?->verifiedAnswer)
+                    <div class="answer-feedback">
+                        <strong>Answer from the key you checked</strong>
+                        <p>Option {{ collect($attempt->verifiedAnswer->option_ids)->join(', ') }} · {{ $attempt->verifiedAnswer->markingSchemeMatch->markingScheme->title }} · page {{ $attempt->verifiedAnswer->source_page }}</p>
+                        <blockquote class="answer-source-transcription">{{ $attempt->verifiedAnswer->answer_excerpt }}</blockquote>
+                        <a href="{{ route('materials.download', $attempt->verifiedAnswer->markingSchemeMatch->markingScheme) }}" target="_blank" rel="noopener">Open the original answer key</a>
+                        <p class="muted">You checked this answer against both original pages. This is practice feedback.</p>
+                    </div>
                 @endif
                 @if ($attempt)
                     <div class="answer-feedback">
@@ -58,7 +67,8 @@
                         <p data-render-math>{{ isset($attempt->response['values']) ? collect($attempt->response['values'])->join(', ') : ($attempt->response['value'] ?? '') }}</p>
                     </div>
                 @endif
-                @if ($question->answer_source === 'source_expected_response' && $question->expected_answer)
+                @if ($attempt?->verifiedAnswer)
+                @elseif ($question->answer_source === 'source_expected_response' && $question->expected_answer)
                     <div class="answer-feedback">
                         <strong>Answer text from the paper · not verified</strong>
                         <p data-render-math>{{ $question->expected_answer }}</p>

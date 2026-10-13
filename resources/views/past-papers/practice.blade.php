@@ -18,11 +18,11 @@
             <section class="quiz-results" role="status" aria-live="polite">
                 <p class="eyebrow">Response submitted</p>
                 @if ($attempt->outcome === 'correct')
-                    <h2>Your answer matches the answer text found in the paper.</h2>
-                    <p>This is practice feedback, not an official mark.</p>
+                    <h2>{{ $attempt->marking_basis === 'confirmed_marking_scheme' ? 'Your answer matches the answer key you checked against the original.' : 'Your answer matches the answer text found in the paper.' }}</h2>
+                    <p>This is practice feedback.</p>
                 @elseif ($attempt->outcome === 'incorrect')
-                    <h2>Your answer does not match the answer text found in the paper.</h2>
-                    <p>The text may not match your original paper exactly. Check the original paper or a marking guide.</p>
+                    <h2>{{ $attempt->marking_basis === 'confirmed_marking_scheme' ? 'Your answer does not match the answer key you checked against the original.' : 'Your answer does not match the answer text found in the paper.' }}</h2>
+                    <p>{{ $attempt->marking_basis === 'confirmed_marking_scheme' ? 'You checked this answer against both original pages. Review them if this result surprises you.' : 'The text may not match your original paper exactly. Check the original paper or a marking guide.' }}</p>
                 @else
                     @if (in_array($question->question_type, ['fill_gap', 'structured_response'], true))
                         <h2>Your response is saved. No score was assigned.</h2>
@@ -30,6 +30,14 @@
                         <h2>Your response is saved, but no score was assigned.</h2>
                         <p>There was no clear answer in the paper to check it against. Check your original paper or a matching marking guide.</p>
                     @endif
+                @endif
+                @if ($attempt->verifiedAnswer)
+                    <div class="answer-feedback">
+                        <strong>Answer from the key you checked</strong>
+                        <p>Option {{ collect($attempt->verifiedAnswer->option_ids)->join(', ') }} · {{ $attempt->verifiedAnswer->markingSchemeMatch->markingScheme->title }} · page {{ $attempt->verifiedAnswer->source_page }}</p>
+                        <blockquote class="answer-source-transcription">{{ $attempt->verifiedAnswer->answer_excerpt }}</blockquote>
+                        <a href="{{ route('materials.download', $attempt->verifiedAnswer->markingSchemeMatch->markingScheme) }}" target="_blank" rel="noopener">Open the original answer key</a>
+                    </div>
                 @endif
                 @if ($attempt->written_feedback_status === 'ready')
                     <div class="answer-feedback" aria-labelledby="written-feedback-heading">
@@ -40,7 +48,7 @@
                                 <li data-render-math><strong>{{ $step['title'] }}</strong><br>{{ $step['detail'] }}</li>
                             @endforeach
                         </ol>
-                        <p>This is practice feedback, not an official mark.</p>
+                        <p>This is practice feedback.</p>
                     </div>
                     @foreach ($writtenFeedbackEvidence as $evidence)
                         <section class="answer-feedback" aria-labelledby="written-feedback-source-{{ $loop->index }}">
@@ -61,7 +69,7 @@
                     <div class="answer-feedback">
                         <strong>Answer text found in the paper</strong>
                         <p data-render-math>{{ $question->expected_answer }}</p>
-                        <p class="muted">This answer text was found in the paper. It has not been checked against an official marking guide.</p>
+                        <p class="muted">This answer text was found in the paper. Check it with a linked answer key before using it to score future practice.</p>
                     </div>
                 @else
                     <div class="answer-feedback"><strong>No clear answer was found in the paper.</strong><p>Check the original paper or use a matching marking guide.</p></div>

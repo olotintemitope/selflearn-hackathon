@@ -11,7 +11,7 @@ class PastPaperAttempt extends Model
     use HasUuids;
 
     protected $fillable = [
-        'practice_run_id', 'past_paper_question_id', 'user_id', 'response', 'outcome', 'marking_basis',
+        'practice_run_id', 'past_paper_question_id', 'user_id', 'response', 'outcome', 'marking_basis', 'verified_answer_id',
         'written_feedback_status', 'written_feedback', 'written_feedback_steps', 'written_feedback_source_chunk_ids', 'submitted_at',
     ];
 
@@ -36,5 +36,10 @@ class PastPaperAttempt extends Model
     public function practiceRun(): BelongsTo
     {
         return $this->belongsTo(PastPaperPracticeRun::class, 'practice_run_id');
+    }
+
+    public function verifiedAnswer(): BelongsTo
+    {
+        return $this->belongsTo(PastPaperVerifiedAnswer::class, 'verified_answer_id');
     }
 }

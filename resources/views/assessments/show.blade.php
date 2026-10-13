@@ -21,7 +21,7 @@
             @endif
             <h2>{{ $attempt->correct_count }} of {{ $multipleChoiceCount }} multiple-choice answers correct</h2>
             @if (filled($writtenAnswer?->written_response))
-                <p>Practice feedback, not an official exam result.</p>
+                <p>Practice feedback.</p>
             @else
                 <p>No written response was submitted, so no written feedback was generated.</p>
             @endif

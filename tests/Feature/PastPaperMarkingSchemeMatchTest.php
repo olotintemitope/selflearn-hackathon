@@ -47,7 +47,7 @@ class PastPaperMarkingSchemeMatchTest extends TestCase
         $this->get(route('materials.show', $paper))
             ->assertOk()
             ->assertSee('Physics answers')
-            ->assertSee('Questions have not been checked against it yet.');
+            ->assertSee('Check each question against both originals before its answer can affect future scores.');
     }
 
     public function test_other_learners_cannot_view_or_link_a_private_paper_or_its_answer_key(): void

@@ -42,7 +42,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('data-read-aloud-controls', false)
             ->assertSee('Your answer matches the answer text found in the paper.')
             ->assertSee('A is the answer')
-            ->assertSee('not been checked against an official marking guide');
+            ->assertSee('Check it with a linked answer key before using it to score future practice.');
     }
 
     public function test_objective_response_mismatch_is_reported_without_claiming_an_official_mark(): void
@@ -149,7 +149,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('From your uploaded paper')
             ->assertSee($material->title.' · page 12 · question 1')
             ->assertSee('Work is calculated with \\(W = Fd\\), where \\(F\\) is force and \\(d\\) is distance.')
-            ->assertSee('This is practice feedback, not an official mark.')
+            ->assertSee('This is practice feedback.')
             ->assertDontSee('written_feedback_status');
     }
 
@@ -344,7 +344,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('Listen to this')
             ->assertSee('Exam practice')
             ->assertSee('Finish and submit')
-            ->assertSee('Practice timer, not official paper timing')
+            ->assertSee('Your answers are saved as you practise. Submit when you are ready.')
             ->assertSee('Which option is correct?')
             ->assertSee('Explain the idea in your own words.')
             ->assertDontSee('A is the answer')
@@ -378,7 +378,7 @@ class PastPaperPracticeTest extends TestCase
             ->assertSee('data-read-aloud-target="paper-result-question-'.$first->id.'"', false)
             ->assertSee('Your paper practice')
             ->assertSee('A is the answer')
-            ->assertSee('not an official mark')
+            ->assertSee('Each result shows whether it used a key you checked')
             ->assertSee('Page 12');
 
         $this->post(route('past-paper-practice.submit', [$material, $run]), [

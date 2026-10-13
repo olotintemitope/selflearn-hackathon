@@ -14,7 +14,7 @@
                 @elseif ($questions->contains(fn ($question) => $question->paper_year))
                     <p class="muted">Year {{ $questions->firstWhere('paper_year')?->paper_year }} is a clue from the paper title or file name.</p>
                 @endif
-                <p id="paper-exam-instructions" class="muted">Practice timer, not official paper timing. Draft answers stay in this browser tab until you submit.</p>
+                <p id="paper-exam-instructions" class="muted">Your answers are saved as you practise. Submit when you are ready.</p>
                 <x-read-aloud target="paper-exam-instructions" language="en" />
             </div>
             <p class="paper-exam-clock" data-paper-clock role="timer" aria-label="Time remaining">{{ $run->duration_minutes }}:00</p>
@@ -41,7 +41,7 @@
                         <legend id="{{ $fieldId }}">
                             <span class="eyebrow">{{ $sourcePaper->title }} · Question {{ $question->question_number }} · Page {{ $question->page ?? 'not specified' }} · {{ ucfirst(str_replace('_', ' ', $question->question_type)) }}</span>
                             @if ($question->paper_year)
-                                <span class="muted">Year {{ $question->paper_year }} from the paper title or file name, not checked against official records.</span>
+                                <span class="muted">Year {{ $question->paper_year }} from the paper title or file name.</span>
                             @endif
                             @if ($question->marks)
                                 <span class="eyebrow">{{ $question->marks }} {{ Illuminate\Support\Str::plural('mark', $question->marks) }} shown in the paper</span>

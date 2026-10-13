@@ -392,7 +392,7 @@ class AssessmentTest extends TestCase
             ->assertOk()
             ->assertSee('0 of 3 multiple-choice answers correct')
             ->assertSee('Practice feedback · 3 of 5 points')
-            ->assertSee('Practice feedback, not an official exam result.')
+            ->assertSee('Practice feedback.')
             ->assertDontSee('AI-generated and provisional')
             ->assertSee('Latest learning signal: 38% across 3 of 8 points.')
             ->assertSee('How to work it out')

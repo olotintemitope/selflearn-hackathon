@@ -7,6 +7,7 @@ use App\Jobs\ProcessMaterial;
 use App\Models\Material;
 use App\Models\PastPaperMarkingSchemeMatch;
 use App\Models\PastPaperQuestion;
+use App\Models\PastPaperVerifiedAnswer;
 use App\Services\Learning\PastPaperQuestionIndexer;
 use App\Services\Learning\PostUploadChoiceGuide;
 use Illuminate\Http\Request;
@@ -68,6 +69,21 @@ class MaterialController extends Controller
                 ->orderBy('title')
                 ->get()
             : collect();
+        $verifiedAnswers = $pastPaperQuestions->isNotEmpty()
+            ? PastPaperVerifiedAnswer::query()
+                ->whereIn('past_paper_question_id', $pastPaperQuestions->modelKeys())
+                ->where('paper_extraction_version', $material->extraction_version)
+                ->with(['markingSchemeMatch.markingScheme', 'markingSchemeChunk'])
+                ->get()
+                ->filter(fn (PastPaperVerifiedAnswer $answer): bool => $answer->markingSchemeMatch
+                    && $answer->markingSchemeMatch->paper_material_id === $material->id
+                    && $answer->markingSchemeMatch->paper_extraction_version === $material->extraction_version
+                    && $answer->markingSchemeMatch->markingScheme?->status === 'ready'
+                    && $answer->markingSchemeMatch->markingScheme?->learning_space_id === $material->learning_space_id
+                    && $answer->markingSchemeMatch->markingScheme?->extraction_version === $answer->marking_scheme_extraction_version)
+                ->groupBy('past_paper_question_id')
+                ->map(fn ($answers) => $answers->sortByDesc('confirmation_version')->first())
+            : collect();
         $readyPastPaperQuestionCount = $pastPaperQuestions->whereIn('review_status', PastPaperQuestion::PRACTICE_READY_STATUSES)->count();
         $hasSourceLinkedConcept = $material->learningSpace->concepts()
             ->whereHas('sources', fn ($query) => $query->where('material_chunks.material_id', $material->id)
@@ -113,7 +129,7 @@ class MaterialController extends Controller
                 : null;
 
         return view('materials.show', compact(
-            'material', 'pastPaperQuestions', 'markingSchemeMatches', 'availableMarkingSchemes', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
+            'material', 'pastPaperQuestions', 'markingSchemeMatches', 'availableMarkingSchemes', 'verifiedAnswers', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
             'hasSourceLinkedConcept', 'sourceLinkedConcepts', 'otherReadyPaperCount', 'mixedReadyPaperCount',
             'choiceIntent', 'learningChoice', 'otherReadyMaterialCount',
         ));
@@ -215,6 +231,19 @@ class MaterialController extends Controller
         $this->authorize('view', $material);
 
         return Storage::disk('local')->download($material->private_source_path, $material->original_filename);
+    }
+
+    public function preview(Request $request, Material $material)
+    {
+        $this->authorize('view', $material);
+        abort_unless(in_array($material->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], true), 415);
+
+        return Storage::disk('local')->response(
+            $material->private_source_path,
+            $material->original_filename,
+            ['Content-Type' => $material->mime_type, 'X-Content-Type-Options' => 'nosniff'],
+            'inline',
+        );
     }
 
     public function retry(Request $request, Material $material)
