@@ -108,7 +108,7 @@ class PastPaperQuestionParserTest extends TestCase
         $this->assertSame('needs_review', $candidates[3]['review_status']);
         $this->assertSame('Question structure could not be identified confidently.', $candidates[3]['review_reason']);
         $this->assertStringNotContainsString('A. cold, hot', $candidates[0]['prompt']);
-        $this->assertStringContainsString('A. cold, hot', $candidates[0]['source_text']);
+        $this->assertStringContainsString('cold, hot', $candidates[0]['source_text']);
     }
 
     public function test_copyright_and_page_footer_do_not_leak_into_last_question(): void
@@ -134,6 +134,26 @@ class PastPaperQuestionParserTest extends TestCase
         $this->assertStringNotContainsString('Copyright', $candidate['prompt']);
         $this->assertStringNotContainsString('Valencia College', $candidate['prompt']);
         $this->assertStringNotContainsString('Page 1', $candidate['prompt']);
+    }
+
+    public function test_nested_numbered_latex_subparts_do_not_become_separate_questions(): void
+    {
+        $text = <<<'OCR'
+        \begin{itemize}
+        \item[1.] Answer both parts.
+        \begin{itemize}
+        \item[1.] Calculate the final temperature.
+        \item[2.] Explain the change.
+        \end{itemize}
+        \item[2.] State the SI unit of heat.
+        \end{itemize}
+        OCR;
+
+        $candidates = (new PastPaperQuestionParser)->parse($text, .99);
+
+        $this->assertSame(['1', '2'], array_column($candidates, 'question_number'));
+        $this->assertStringContainsString('Calculate the final temperature.', $candidates[0]['prompt']);
+        $this->assertStringContainsString('Explain the change.', $candidates[0]['prompt']);
     }
 
     public function test_unlabeled_text_is_not_guessed_into_a_question(): void

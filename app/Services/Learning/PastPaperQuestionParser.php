@@ -109,20 +109,40 @@ final class PastPaperQuestionParser
 
     private function normalizeLatexLists(string $content): string
     {
-        $content = preg_replace('/\\\\begin\s*\{itemize\}/iu', "\n", $content) ?? $content;
-        $content = preg_replace('/\\\\end\s*\{itemize\}/iu', "\n", $content) ?? $content;
-        $content = preg_replace_callback(
-            '/\\\\item\s*\[\s*\(?([A-H])\s*[.)]?\)?\s*\]\s*/iu',
-            fn (array $match): string => "\n".strtoupper($match[1]).'. ',
-            $content,
-        ) ?? $content;
-        $content = preg_replace_callback(
-            '/\\\\item\s*\[\s*(\d{1,2})\s*[.)]?\s*\]\s*/iu',
-            fn (array $match): string => "\n".$match[1].'. ',
-            $content,
-        ) ?? $content;
+        $listDepth = 0;
 
-        return preg_replace('/\\\\item\s*(?:\[\s*\])?\s*/iu', "\n", $content) ?? $content;
+        return preg_replace_callback(
+            '/\\\\(?:begin\s*\{itemize\}|end\s*\{itemize\}|item\s*(?:\[\s*([^\]]*?)\s*\])?)/iu',
+            function (array $match) use (&$listDepth): string {
+                $token = strtolower($match[0]);
+                if (str_starts_with($token, '\\begin')) {
+                    $listDepth++;
+
+                    return "\n";
+                }
+                if (str_starts_with($token, '\\end')) {
+                    $listDepth = max(0, $listDepth - 1);
+
+                    return "\n";
+                }
+
+                $label = trim($match[1] ?? '');
+                if ($label === '') {
+                    return "\n";
+                }
+                if (preg_match('/^\(?([A-H])[.)]?\)?$/iu', $label, $option)) {
+                    return "\n".strtoupper($option[1]).'. ';
+                }
+                if (preg_match('/^(\d{1,2})[.)]?$/u', $label, $number)) {
+                    return $listDepth <= 1
+                        ? "\n".$number[1].'. '
+                        : "\n(".$number[1].') ';
+                }
+
+                return "\n".$label.' ';
+            },
+            $content,
+        ) ?? $content;
     }
 
     private function headingQuestionNumber(string $content): ?string
