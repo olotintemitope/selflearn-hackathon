@@ -51,7 +51,8 @@ If the implementation agents need to touch the same files, do the recommendation
 
 - [x] Uses a native disclosure, fieldset/radios, links, buttons, and an announced recommendation status.
 - [x] Follows the design system's borderless surfaces, spacing, and plain learner-facing copy.
-- [ ] Verify keyboard-only navigation with visible focus, direct 200% browser zoom, and a full laptop/mobile browser pass. The live 320px check found no horizontal overflow.
+- [x] Keyboard-only navigation can open the topic chooser and reach its checkbox with a visible 3px focus outline. At 320px, the document remained 305 CSS pixels wide with no horizontal overflow.
+- [ ] Direct 200% browser zoom, a complete laptop/mobile pass, and screen-reader review remain open.
 - [x] The choice and recommendation work locally without generated content or another model request.
 
 ## Agent verification checklist
