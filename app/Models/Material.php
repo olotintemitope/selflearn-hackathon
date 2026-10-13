@@ -66,4 +66,9 @@ class Material extends Model
     {
         return $this->hasMany(PastPaperQuestion::class);
     }
+
+    public function confirmedMarkingSchemes(): HasMany
+    {
+        return $this->hasMany(PastPaperMarkingSchemeMatch::class, 'paper_material_id');
+    }
 }
