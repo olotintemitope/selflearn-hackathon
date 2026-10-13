@@ -72,6 +72,12 @@ class MaterialController extends Controller
                 ->count()
             : 0;
         $mixedReadyPaperCount = $otherReadyPaperCount + ($readyPastPaperQuestionCount > 0 ? 1 : 0);
+        $otherReadyMaterialCount = in_array($material->status, ['pending', 'processing', 'failed'], true)
+            ? $material->learningSpace->materials()
+                ->where('materials.id', '!=', $material->getKey())
+                ->where('status', 'ready')
+                ->count()
+            : 0;
         $choiceIntent = $request->query('learning_intent');
         if (! in_array($choiceIntent, ['practise', 'learn_first', 'unsure'], true)) {
             $choiceIntent = null;
@@ -89,7 +95,7 @@ class MaterialController extends Controller
         return view('materials.show', compact(
             'material', 'pastPaperQuestions', 'readyPastPaperQuestionCount', 'heldPastPaperQuestionCount',
             'hasSourceLinkedConcept', 'sourceLinkedConcepts', 'otherReadyPaperCount', 'mixedReadyPaperCount',
-            'choiceIntent', 'learningChoice',
+            'choiceIntent', 'learningChoice', 'otherReadyMaterialCount',
         ));
     }
 

@@ -1,6 +1,6 @@
 # Slice 7: Choose how to use an uploaded exam paper
 
-**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can now choose paper-linked topics to focus on in the prerequisite-aware path; mixed practice displays source-linked topics for each paper and requires explicit confirmation before starting. Incomplete extraction/retry review, full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
+**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can choose paper-linked topics to focus the prerequisite-aware path, and processing or failure pages link to other ready materials in the same space. Mixed practice shows source-linked topics for each paper and requires explicit confirmation before starting. Full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
 
 ## Learner outcome
 
@@ -43,7 +43,7 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] If no concepts are available, do not promise concept-first learning; feature tests cover preserving ready practice and the no-concept recommendation.
 - [x] If no questions are ready, do not offer a broken exam start; held-question tests confirm the review path remains available.
 - [x] If question indexing has not run yet, the panel keeps concept study available and links to the visible “Find questions” action.
-- [ ] If extraction or question review is incomplete, keep the source, uncertainty, and retry/review path visible without blocking other ready materials.
+- [x] If extraction or question review is incomplete, keep the source and uncertainty visible, preserve retry or question review, and leave other ready materials available. Feature tests cover pending and failed materials alongside other ready materials, plus ready questions while another question is held for review.
 - [x] The material page uses existing ownership authorization; a feature test covers a non-owner request.
 - [x] Intent selection uses a deterministic local guide with no provider call.
 
@@ -61,6 +61,8 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Ready questions, no concepts: exam practice remains available and no concept recommendation is invented.
 - [x] Extraction ready, question indexing not started: the choice remains useful, concept study stays available when supported, and finding questions remains visible.
 - [x] All question candidates held for review: no exam-start action; review path remains clear.
+- [x] A mix of ready and held questions: ready questions remain available for practice while the held question stays available for review.
+- [x] Pending or failed material with another ready material: show the progress or retry state and a route back to the ready material list.
 - [x] Multiple related papers: learner can select papers and inspect per-paper topic evidence before confirming the set in the live browser.
 - [x] Mixed or unrelated materials: the learner sees distinct topics under each paper and explicitly confirms before starting mixed practice.
 - [x] Learner intent produces a reasoned recommendation and does not lock the learner into a route. Automated tests cover intent outcomes; the live browser covered “not sure.”

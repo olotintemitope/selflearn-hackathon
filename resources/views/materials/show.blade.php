@@ -32,6 +32,12 @@
                 @endforeach
             </ol>
             <p class="muted">This page will update automatically. You can safely leave and return later.</p>
+            @if ($otherReadyMaterialCount > 0)
+                <aside class="notice stack">
+                    <p>You can continue with {{ $otherReadyMaterialCount }} other ready {{ Illuminate\Support\Str::plural('material', $otherReadyMaterialCount) }} in this study space while this one is being prepared.</p>
+                    <a href="{{ route('materials.index') }}#space-{{ $material->learning_space_id }}-materials">See your other ready materials</a>
+                </aside>
+            @endif
         </div>
         <script>window.setTimeout(() => window.location.reload(), 3000);</script>
     @elseif ($material->status === 'failed')
@@ -61,6 +67,12 @@
                 <p>{{ $material->failure_message }}</p>
             @endif
             <form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form>
+            @if ($otherReadyMaterialCount > 0)
+                <aside class="notice stack">
+                    <p>You can keep studying from {{ $otherReadyMaterialCount }} other ready {{ Illuminate\Support\Str::plural('material', $otherReadyMaterialCount) }} in this study space while you retry this one.</p>
+                    <a href="{{ route('materials.index') }}#space-{{ $material->learning_space_id }}-materials">See your other ready materials</a>
+                </aside>
+            @endif
         </div>
     @else
         @php($relatedPages = $material->chunks->where('relevance_status', 'related'))

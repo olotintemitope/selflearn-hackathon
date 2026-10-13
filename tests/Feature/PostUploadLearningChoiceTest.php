@@ -77,6 +77,23 @@ class PostUploadLearningChoiceTest extends TestCase
             ->assertDontSee('Start exam practice');
     }
 
+    public function test_ready_questions_remain_practiceable_while_other_questions_need_review(): void
+    {
+        [$user, $material] = $this->paper();
+        $this->addQuestion($material, 1, 'ready');
+        $held = $this->addQuestion($material, 2, 'needs_review');
+        $held->update(['question_number' => '2', 'review_reason' => 'The answer choices need checking.']);
+
+        $this->actingAs($user)->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('1 ready to practise.')
+            ->assertSee('Start exam practice')
+            ->assertSee('Question 2')
+            ->assertSee('The answer choices need checking.')
+            ->assertSee('Check or correct this question')
+            ->assertSee('Questions needing review stay out.');
+    }
+
     public function test_topics_from_a_different_material_are_not_attributed_to_this_paper(): void
     {
         [$user, $material] = $this->paper();
@@ -223,10 +240,43 @@ class PostUploadLearningChoiceTest extends TestCase
             'extraction_version' => 1,
             'metadata' => ['processing_stage' => 'relevance'],
         ]);
+        $space->materials()->create([
+            'title' => 'Ready revision notes', 'role' => 'study_notes',
+            'private_source_path' => 'materials/test/ready-notes.pdf', 'original_filename' => 'ready-notes.pdf',
+            'mime_type' => 'application/pdf', 'size_bytes' => 100, 'status' => 'ready', 'extraction_version' => 1,
+        ]);
 
         $this->actingAs($space->user)->get(route('materials.show', $material))
             ->assertOk()
             ->assertSee('All pages have been extracted. Now we’re checking which pages match your learning goal.')
+            ->assertSee('You can continue with 1 other ready material in this study space while this one is being prepared.')
+            ->assertSee(route('materials.index').'#space-'.$space->id.'-materials')
+            ->assertDontSee('How would you like to use this paper?');
+    }
+
+    public function test_failed_material_keeps_retry_and_other_ready_materials_available(): void
+    {
+        $space = LearningSpace::factory()->create();
+        $failed = $space->materials()->create([
+            'title' => 'Physics paper', 'role' => 'past_paper',
+            'private_source_path' => 'materials/test/physics.pdf', 'original_filename' => 'physics.pdf',
+            'mime_type' => 'application/pdf', 'size_bytes' => 100, 'status' => 'failed',
+            'extraction_version' => 1, 'failure_message' => 'The page could not be read.',
+            'metadata' => ['failed_stage' => 'extraction'],
+        ]);
+        $space->materials()->create([
+            'title' => 'Ready revision notes', 'role' => 'study_notes',
+            'private_source_path' => 'materials/test/ready-notes.pdf', 'original_filename' => 'ready-notes.pdf',
+            'mime_type' => 'application/pdf', 'size_bytes' => 100, 'status' => 'ready', 'extraction_version' => 1,
+        ]);
+
+        $this->actingAs($space->user)->get(route('materials.show', $failed))
+            ->assertOk()
+            ->assertSee('The problem happened while reading your material.')
+            ->assertSee(route('materials.download', $failed))
+            ->assertSee('Retry processing')
+            ->assertSee('You can keep studying from 1 other ready material in this study space while you retry this one.')
+            ->assertSee(route('materials.index').'#space-'.$space->id.'-materials')
             ->assertDontSee('How would you like to use this paper?');
     }
 
