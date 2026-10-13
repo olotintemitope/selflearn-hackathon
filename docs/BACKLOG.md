@@ -12,7 +12,7 @@ Last reconciled: 2026-10-13. This is the canonical priority and status index. Th
 | [Offline learning and demo](backlog/04-offline-and-demo.md) | Core flow built; acceptance checks remain | Slow-network measurements, session/account transitions, and accessibility completion. |
 | [Personal learning guide and clock demo](backlog/05-clock-reading-tutor.md) | Partial demo slice | Rescore against the fresh-account design-pattern and scanned Physics evidence, then complete read-aloud/language and accessibility checks; current rubric 11/14 (pass threshold 12/14). |
 | [Accessibility preferences and read-aloud](backlog/06-accessibility-preferences.md) | In progress | OpenAI TTS is integrated and live-checked in study; verify actual quiz/exam audio, language support, keyboard, screen-reader, zoom, and cross-browser behavior. |
-| [After-upload learning choice](backlog/07-post-upload-learning-choice.md) | In progress | Topic focus and continuity to ready materials during processing or retry are implemented; practice, mixed practice, and study route/back navigation were checked live. A 320px keyboard pass reached the topic chooser with visible focus. Direct 200% zoom, complete device coverage, and screen-reader review remain. |
+| [After-upload learning choice](backlog/07-post-upload-learning-choice.md) | In progress | Topic focus and continuity to ready materials during processing or retry are implemented; practice, mixed practice, and study route/back navigation were checked live. Ready-paper and study-path views reflow without horizontal overflow at 320, 375, 768, 1024, 1440, 2560, and 3840px; keyboard focus was visible at 320px. Direct 200% zoom, broader route/device coverage, and screen-reader review remain. |
 
 ## Prioritized next work
 
