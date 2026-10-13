@@ -12,6 +12,7 @@ Last reconciled: 2026-10-13. This is the canonical priority and status index. Th
 | [Offline learning and demo](backlog/04-offline-and-demo.md) | Core flow built; acceptance checks remain | Slow-network measurements, session/account transitions, and accessibility completion. |
 | [Personal learning guide and clock demo](backlog/05-clock-reading-tutor.md) | Partial demo slice | Rescore against the fresh-account design-pattern and scanned Physics evidence, then complete read-aloud/language and accessibility checks; current rubric 11/14 (pass threshold 12/14). |
 | [Accessibility preferences and read-aloud](backlog/06-accessibility-preferences.md) | In progress | OpenAI TTS is integrated and live-checked in study; verify actual quiz/exam audio, language support, keyboard, screen-reader, zoom, and cross-browser behavior. |
+| [After-upload learning choice](backlog/07-post-upload-learning-choice.md) | Planned | After a past paper is ready, guide learners to exam practice, concept-first study, or a low-pressure recommendation without assuming prior knowledge. |
 
 ## Prioritized next work
 
@@ -22,6 +23,7 @@ Last reconciled: 2026-10-13. This is the canonical priority and status index. Th
 3. Complete the demo accessibility pass: keyboard-only, 320px reflow, direct 200% browser zoom, and assistive-technology review. Verify OpenAI-generated audio in study, quiz, and exam flows, selected-language text, readable-text fallback, pause/replay behavior, and pre-submission answer privacy.
 4. **Completed: clean-path verification and rubric rescore.** Live review confirmed the recommended lesson in space 47 is clock-related and no generic concept appears in that path. A new design-pattern tutor follow-up and guided practice also raised Slice 5 to 11/14, still below the 12/14 pass threshold. No source files or historical learner records were deleted; the new tutor turn and practice attempt were saved to the existing demo account. The demo is still not accepted; remaining evidence gaps are listed in Slice 5 and the development log.
 5. **In progress.** The [Slice 6](backlog/06-accessibility-preferences.md) preference dialog and shared OpenAI TTS controls are implemented. A real OpenAI audio response played in the study flow, and assessment/past-paper exam pages render the same controls. A live exam generation attempt returned a learner-safe “could not build a fair exam” message, so actual OpenAI speech playback on a live exam page remains open. Also open: screen-reader review, direct 200% zoom, broad keyboard navigation, and language-quality verification. The standalone clock-practice speech buttons do not satisfy whole-app acceptance by themselves.
+6. **Planned.** Add the [post-upload learning choice](backlog/07-post-upload-learning-choice.md). The current material page already offers exam practice and a separate study path, and that path has a guided lesson session. The missing piece is an explicit, guided choice after a paper is ready, including a learner-led “help me choose” route.
 
 ### P1: Make imported exam practice trustworthy
 

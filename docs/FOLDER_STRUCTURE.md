@@ -32,6 +32,9 @@
 - `docs/backlog/02-path-and-tutor.md`
 - `docs/backlog/03-quiz-and-adaptation.md`
 - `docs/backlog/04-offline-and-demo.md`
+- `docs/backlog/05-clock-reading-tutor.md`
+- `docs/backlog/06-accessibility-preferences.md`
+- `docs/backlog/07-post-upload-learning-choice.md`
 - `public/.gitkeep`
 - `resources/js/offline/.gitkeep`
 - `resources/views/learning/.gitkeep`
