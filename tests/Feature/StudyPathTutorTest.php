@@ -33,6 +33,8 @@ class StudyPathTutorTest extends TestCase
             ->assertSee('data-read-aloud-language="yo"', false)
             ->assertSee('data-read-aloud-target="tutor-answer-'.$message->id.'"', false)
             ->assertSee('<audio class="read-aloud-player" controls', false)
+            ->assertSee('<audio class="read-aloud-player" controls hidden', false)
+            ->assertSee('role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with your tutor"', false)
             ->assertDontSee('AI-generated speech')
             ->assertDontSee('AI voice')
             ->assertDontSee('The text you select is sent')
