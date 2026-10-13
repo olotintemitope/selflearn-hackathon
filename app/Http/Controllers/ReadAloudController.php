@@ -16,6 +16,15 @@ final class ReadAloudController
             'language' => ['required', 'string', 'in:en,ha,ig,yo'],
         ]);
 
+        $supportedLanguages = config('services.openai.tts_supported_languages', ['en']);
+        if (! in_array($validated['language'], $supportedLanguages, true)) {
+            $languageNames = ['ha' => 'Hausa', 'ig' => 'Igbo', 'yo' => 'Yoruba'];
+
+            return response()->json([
+                'message' => 'Audio is not available in '.($languageNames[$validated['language']] ?? 'this language').' yet. You can still read it on screen.',
+            ], 422);
+        }
+
         try {
             $audio = $speech->generate(trim($validated['text']), $validated['language'], $request->user()->id);
         } catch (Throwable $exception) {

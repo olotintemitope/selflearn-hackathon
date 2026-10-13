@@ -1,6 +1,6 @@
 # Slice 7: Choose how to use an uploaded exam paper
 
-**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can choose paper-linked topics to focus the prerequisite-aware path, and processing or failure pages link to other ready materials in the same space. Mixed practice shows source-linked topics for each paper and requires explicit confirmation before starting. Route switching and browser back were checked live; broad keyboard testing, direct 200% zoom, and screen-reader review remain open.
+**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can choose paper-linked topics to focus the prerequisite-aware path, and processing or failure pages link to other ready materials in the same space. Mixed practice shows source-linked topics for each paper and requires explicit confirmation before starting. Route switching and browser back were checked live; ready-paper and study-path views were checked from 320px through 3840px, and keyboard focus was checked at 320px. Direct 200% zoom, broader device/route coverage, and screen-reader review remain open. Pending and failed-state continuity is feature-tested, but was not exercised live.
 
 ## Learner outcome
 

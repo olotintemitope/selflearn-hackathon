@@ -21,7 +21,14 @@
     </a>
     @auth
         <div class="header-actions">
-            <button type="button" class="link-button" data-open-accessibility>Accessibility preferences</button>
+            <button type="button" class="link-button accessibility-trigger" data-open-accessibility aria-label="Accessibility preferences" title="Accessibility preferences">
+                <svg class="accessibility-preferences-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M4 6h5m4 0h7M4 12h9m4 0h3M4 18h2m4 0h10" />
+                    <circle cx="11" cy="6" r="2" />
+                    <circle cx="15" cy="12" r="2" />
+                    <circle cx="8" cy="18" r="2" />
+                </svg>
+            </button>
             <form method="POST" action="{{ route('logout') }}" data-offline-user-id="{{ auth()->id() }}">
                 @csrf
                 <button class="link-button">Sign out</button>
