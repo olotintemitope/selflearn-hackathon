@@ -258,8 +258,36 @@ class MaterialUploadTest extends TestCase
             ->assertOk()
             ->assertSee('Preparing your study guide')
             ->assertSee('This page will update automatically')
+            ->assertDontSee('See your other ready materials')
             ->assertSee('window.location.reload()', false)
             ->assertDontSee('queue:work')
             ->assertDontSee('Run the queue worker');
+    }
+
+    public function test_owner_can_retry_failed_processing_and_the_retry_keeps_saved_page_data(): void
+    {
+        Queue::fake();
+        $material = Material::factory()->create([
+            'status' => 'failed',
+            'failure_message' => 'The study guide could not be built.',
+            'metadata' => ['failed_stage' => 'concepts', 'processing_stage' => 'concepts'],
+        ]);
+        $chunk = $material->chunks()->create([
+            'extraction_version' => $material->extraction_version,
+            'content' => 'Saved page text remains available for retry.',
+            'page' => 1,
+            'locator' => ['page' => 1],
+            'relevance_status' => 'related',
+        ]);
+
+        $this->actingAs($material->learningSpace->user)
+            ->post(route('materials.retry', $material))
+            ->assertRedirect();
+
+        $this->assertSame('pending', $material->refresh()->status);
+        $this->assertNull($material->failure_message);
+        $this->assertArrayNotHasKey('failed_stage', $material->metadata);
+        $this->assertDatabaseHas('material_chunks', ['id' => $chunk->id, 'content' => 'Saved page text remains available for retry.']);
+        Queue::assertPushed(ProcessMaterial::class, fn ($job) => $job->materialId === $material->id);
     }
 }
