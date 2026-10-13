@@ -61,6 +61,81 @@ class PastPaperQuestionParserTest extends TestCase
         $this->assertStringContainsString('A. First choice', $candidates[0]['source_text']);
     }
 
+    public function test_mathpix_latex_itemized_exam_questions_are_split_and_partial_choices_are_held_for_review(): void
+    {
+        $text = <<<'OCR'
+        \begin{itemize}
+        \item[1.] Heat is defined as energy that flows from a \_\_ body to a \_\_ body.
+        \begin{itemize}
+        \item[A.] cold, hot
+        \item[B.] hot, cold
+        \item[C.] warm, cool
+        \item[D.] cool, warm
+        \end{itemize}
+        \item[2.] The SI unit of heat is
+        \begin{itemize}
+        \item[A.] Kelvin
+        \item[B.] Celsius
+        \item[C.] Joule
+        \item[D.] Newton
+        \end{itemize}
+        \item[3.] Temperature is the degree of hotness or coldness.
+        \begin{itemize}
+        \item[A.] weight, mass
+        \item[(B)] hotness, coldness
+        \item[C.] density, volume
+        \item[D.] pressure, force
+        \end{itemize}
+        \item[4.] The SI unit of temperature is
+        \begin{itemize}
+        \item[] Kelvin
+        \item[B.] Celsius
+        \item[C.] Joule
+        \item[D.] Fahrenheit
+        \end{itemize}
+        \end{itemize}
+        OCR;
+
+        $candidates = (new PastPaperQuestionParser)->parse($text, .99);
+
+        $this->assertCount(4, $candidates);
+        $this->assertSame(['1', '2', '3', '4'], array_column($candidates, 'question_number'));
+        $this->assertSame('single_choice', $candidates[0]['question_type']);
+        $this->assertCount(4, $candidates[0]['options']);
+        $this->assertSame('cold, hot', $candidates[0]['options'][0]['text']);
+        $this->assertSame('ready', $candidates[0]['review_status']);
+        $this->assertSame('hotness, coldness', $candidates[2]['options'][1]['text']);
+        $this->assertSame('needs_review', $candidates[3]['review_status']);
+        $this->assertSame('Question structure could not be identified confidently.', $candidates[3]['review_reason']);
+        $this->assertStringNotContainsString('A. cold, hot', $candidates[0]['prompt']);
+        $this->assertStringContainsString('A. cold, hot', $candidates[0]['source_text']);
+    }
+
+    public function test_copyright_and_page_footer_do_not_leak_into_last_question(): void
+    {
+        $text = <<<'OCR'
+        \begin{itemize}
+        \item[12.] When a solid is heated, it:
+        \begin{itemize}
+        \item[A.] contracts
+        \item[B.] melts immediately
+        \item[C.] expands
+        \item[D.] becomes denser
+        \end{itemize}
+        Copyright (C) 2026
+        Valencia College, Ibadan. (3rd Term Examination)
+        Page 1
+        OCR;
+
+        $candidate = (new PastPaperQuestionParser)->parse($text, .99)[0];
+
+        $this->assertSame('12', $candidate['question_number']);
+        $this->assertSame('When a solid is heated, it:', $candidate['prompt']);
+        $this->assertStringNotContainsString('Copyright', $candidate['prompt']);
+        $this->assertStringNotContainsString('Valencia College', $candidate['prompt']);
+        $this->assertStringNotContainsString('Page 1', $candidate['prompt']);
+    }
+
     public function test_unlabeled_text_is_not_guessed_into_a_question(): void
     {
         $this->assertSame([], (new PastPaperQuestionParser)->parse('A paragraph about physics with no clear question boundary.'));

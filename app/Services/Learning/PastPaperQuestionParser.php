@@ -10,14 +10,14 @@ namespace App\Services\Learning;
  */
 final class PastPaperQuestionParser
 {
-    public const VERSION = 'page-question-parser-v1';
+    public const VERSION = 'page-question-parser-v2';
 
     /**
      * @return array<int, array{question_number:string, prompt:string, source_text:string, question_type:string, options:array<int, array{id:string,text:string}>, marks:?int, expected_answer:?string, answer_source:string, review_status:string, review_reason:?string, confidence:float}>
      */
     public function parse(string $content, ?float $ocrConfidence = null): array
     {
-        $content = str_replace(["\r\n", "\r"], "\n", trim($content));
+        $content = $this->normalizeLatexLists(str_replace(["\r\n", "\r"], "\n", trim($content)));
         if ($content === '') {
             return [];
         }
@@ -100,8 +100,29 @@ final class PastPaperQuestionParser
         $content = preg_replace_callback('/^\s*Question\s+(\d+)\s*:?\s*$/imu', fn (array $match): string => "\n@@QUESTION:".$match[1]."@@\n", $content) ?? $content;
         $content = preg_split('/(?:\\\\section\*\s*\{\s*(?:Observation|Comments?|Expected\s+Responses?|Answers?)\s*\}|^\s*(?:Observation|Examiner[’\']?s?\s+comments?|Expected\s+Responses?|Answers?|Marking\s+Scheme)\s*:)/imu', $content)[0] ?? $content;
         $content = preg_split('/\b(?:The question was popular among candidates|Candidates[’\']?\s+performance was poor|Most candidates (?:did not|failed to|were unable to)|Many candidates (?:did not|failed to|were unable to))\b/iu', $content)[0] ?? $content;
+        $content = preg_replace('/\s*Copyright\s*(?:\(C\)|©)\s*\d{4}[^\n]*(?:\n|$)/iu', "\n", $content) ?? $content;
+        $content = preg_replace('/\s*Page\s+\d+\s*$/iu', '', $content) ?? $content;
+        $content = preg_replace('/(?:\R\s*)+[^\n]*(?:College|School|University)[^\n]*(?:Term|Examination|Exam)[^\n]*\s*$/iu', '', $content) ?? $content;
 
         return trim($content);
+    }
+
+    private function normalizeLatexLists(string $content): string
+    {
+        $content = preg_replace('/\\\\begin\s*\{itemize\}/iu', "\n", $content) ?? $content;
+        $content = preg_replace('/\\\\end\s*\{itemize\}/iu', "\n", $content) ?? $content;
+        $content = preg_replace_callback(
+            '/\\\\item\s*\[\s*\(?([A-H])\s*[.)]?\)?\s*\]\s*/iu',
+            fn (array $match): string => "\n".strtoupper($match[1]).'. ',
+            $content,
+        ) ?? $content;
+        $content = preg_replace_callback(
+            '/\\\\item\s*\[\s*(\d{1,2})\s*[.)]?\s*\]\s*/iu',
+            fn (array $match): string => "\n".$match[1].'. ',
+            $content,
+        ) ?? $content;
+
+        return preg_replace('/\\\\item\s*(?:\[\s*\])?\s*/iu', "\n", $content) ?? $content;
     }
 
     private function headingQuestionNumber(string $content): ?string
@@ -182,20 +203,18 @@ final class PastPaperQuestionParser
             $options[] = ['id' => strtoupper($match[1]), 'text' => trim($match[2])];
         }
         $optionIds = array_column($options, 'id');
-        $consecutiveOptions = count($optionIds) >= 2;
-        if ($consecutiveOptions) {
-            $expected = range('A', chr(ord('A') + count($optionIds) - 1));
-            $consecutiveOptions = $optionIds === $expected;
-        }
+        $hasMultipleOptions = count($optionIds) >= 2;
+        $consecutiveOptions = $hasMultipleOptions
+            && $optionIds === range('A', chr(ord('A') + count($optionIds) - 1));
 
         if ($consecutiveOptions && count($options) === 2 && collect($options)->every(fn (array $option): bool => preg_match('/^(true|false)$/i', $option['text']) === 1)) {
             return ['true_false', $options, true];
         }
-        if ($consecutiveOptions && preg_match('/\b(select|choose|tick|identify)\s+(all|every|two|three|more than one)\b/i', $prompt)) {
-            return ['multiple_select', $options, true];
+        if ($hasMultipleOptions && preg_match('/\b(select|choose|tick|identify)\s+(all|every|two|three|more than one)\b/i', $prompt)) {
+            return ['multiple_select', $options, $consecutiveOptions];
         }
-        if ($consecutiveOptions) {
-            return ['single_choice', $options, true];
+        if ($hasMultipleOptions) {
+            return ['single_choice', $options, $consecutiveOptions];
         }
         if (preg_match('/_{2,}|\.{3,}|\b(fill\s+in\s+the\s+(?:blank|gap)|complete\s+the\s+sentence)\b/i', $prompt)) {
             return ['fill_gap', [], true];
