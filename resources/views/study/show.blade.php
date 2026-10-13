@@ -130,6 +130,9 @@
             @include('study.partials.tutor-language', ['learningSpace' => $learningSpace])
             <div class="conversation" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with your tutor">
                 @forelse ($messages as $message)
+                    @if ($message->role === 'assistant' && (string) session('tutor_reply_id') === (string) $message->id)
+                        <p class="notice tutor-reply-status" id="tutor-reply-status-{{ $message->id }}" role="status" aria-live="polite" tabindex="-1">{{ app(\App\Services\Learning\TutorFallbackCopy::class)->text($message->language, 'reply_ready') }}</p>
+                    @endif
                     <article class="message message-{{ $message->role }} {{ $message->status === 'failed' ? 'error' : '' }}">
                         <h3>{{ $message->role === 'user' ? 'You' : 'Tutor' }}</h3>
                         @if ($message->status === 'failed')
