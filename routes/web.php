@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/materials', [MaterialController::class, 'index'])->name('materials.index');
     Route::post('/materials', [MaterialController::class, 'store'])->name('materials.store');
     Route::post('/spaces', [LearningSpaceController::class, 'store'])->name('spaces.store');
+    Route::get('/materials/{material}/pages/{page}/figures/{figure}', [MaterialController::class, 'figure'])
+        ->whereNumber('page')->whereNumber('figure')->name('materials.page-figure');
     Route::get('/materials/{material}', [MaterialController::class, 'show'])->name('materials.show');
     Route::get('/materials/{material}/download', [MaterialController::class, 'download'])->name('materials.download');
     Route::get('/materials/{material}/preview', [MaterialController::class, 'preview'])->name('materials.preview');

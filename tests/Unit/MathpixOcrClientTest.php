@@ -63,6 +63,62 @@ class MathpixOcrClientTest extends TestCase
         );
     }
 
+    public function test_selected_pdf_pages_preserve_mathpix_figure_crops(): void
+    {
+        config()->set('services.mathpix', [
+            'app_id' => 'test-id', 'app_key' => 'test-key',
+            'image_endpoint' => 'https://api.mathpix.com/v3/text',
+            'pdf_endpoint' => 'https://api.mathpix.com/v3/pdf',
+            'pdf_max_poll_attempts' => 3,
+            'pdf_poll_interval_ms' => 0,
+        ]);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p1sAAAAASUVORK5CYII=');
+        Http::fake(function (Request $request) use ($png) {
+            if ($request->method() === 'POST') {
+                return Http::response(['pdf_id' => 'pdf-figures']);
+            }
+            if (str_ends_with($request->url(), '.lines.json')) {
+                return Http::response([
+                    'pages' => [
+                        [
+                            'page' => 7,
+                            'lines' => [[
+                                'text' => 'A class diagram shows the relationships.',
+                                'text_display' => '![Class diagram](https://cdn.mathpix.com/cropped/diagram.png?height=10)',
+                            ], [
+                                'text' => '',
+                                'text_display' => '\\includegraphics[alt={Component diagram}]{https://cdn.mathpix.com/cropped/component.png?height=10}',
+                            ], [
+                                'text' => 'UML diagram of a class hierarchy shows its inheritance relationships.',
+                                'text_display' => '![ ](https://cdn.mathpix.com/cropped/hierarchy.png?height=10)',
+                            ]],
+                        ],
+                    ],
+                ]);
+            }
+            if (str_contains($request->url(), 'cdn.mathpix.com/cropped/')) {
+                return Http::response($png, 200, ['Content-Type' => 'image/png']);
+            }
+
+            return Http::response(['status' => 'completed']);
+        });
+
+        $result = app(MathpixOcrClient::class)->extractPdfPages('%PDF selected pages', [7]);
+
+        $this->assertSame([7], array_column($result->pages, 'page'));
+        $this->assertSame("A class diagram shows the relationships.\nUML diagram of a class hierarchy shows its inheritance relationships.", $result->pages[0]['content']);
+        $this->assertSame('Class diagram', $result->pages[0]['figure_assets'][0]['alt']);
+        $this->assertSame('Component diagram', $result->pages[0]['figure_assets'][1]['alt']);
+        $this->assertSame('UML diagram of a class hierarchy shows its inheritance relationships.', $result->pages[0]['figure_assets'][2]['alt']);
+        $this->assertSame($png, $result->pages[0]['figure_assets'][0]['bytes']);
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && str_contains($request->body(), '"page_ranges":"7"'));
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'cdn.mathpix.com/cropped/')
+            && ! $request->hasHeader('app_key'));
+        Http::assertSent(fn (Request $request) => $request->method() === 'DELETE'
+            && str_contains($request->url(), '/pdf-figures'));
+    }
+
     public function test_pdf_processing_is_polled_until_mathpix_finishes(): void
     {
         config()->set('services.mathpix', [
@@ -79,6 +135,9 @@ class MathpixOcrClientTest extends TestCase
             }
             if (str_ends_with($request->url(), '.lines.json')) {
                 return Http::response(['pages' => [['page' => 1, 'lines' => [['text' => 'A longer scan completed.']]]]]);
+            }
+            if ($request->method() === 'DELETE') {
+                return Http::response([]);
             }
 
             $statusCalls++;
@@ -105,6 +164,9 @@ class MathpixOcrClientTest extends TestCase
         Http::fake(function (Request $request) use (&$statusCalls) {
             if ($request->method() === 'POST') {
                 return Http::response(['pdf_id' => 'pdf-timeout']);
+            }
+            if ($request->method() === 'DELETE') {
+                return Http::response([]);
             }
             $statusCalls++;
 

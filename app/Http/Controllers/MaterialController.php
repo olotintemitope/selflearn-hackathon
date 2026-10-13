@@ -246,6 +246,33 @@ class MaterialController extends Controller
         );
     }
 
+    public function figure(Request $request, Material $material, int $page, int $figure)
+    {
+        $this->authorize('view', $material);
+        abort_unless($page > 0 && $figure > 0, 404);
+        $chunk = $material->chunks()
+            ->where('extraction_version', $material->extraction_version)
+            ->where('page', $page)
+            ->first();
+        $asset = data_get($chunk?->locator, 'figures.'.($figure - 1));
+        $path = is_array($asset) ? ($asset['path'] ?? null) : null;
+        $mimeType = is_array($asset) ? ($asset['mime_type'] ?? null) : null;
+        $userId = $material->learningSpace->user_id;
+        $expectedPath = is_string($path) && in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true)
+            ? 'materials/'.$userId.'/'.$material->uuid.'/figures/v'.$material->extraction_version.'/page-'.$page.'/figure-'.$figure.'.'.match ($mimeType) {
+                'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
+            }
+        : null;
+        abort_unless(is_string($path) && $path === $expectedPath
+            && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [
+            'Content-Type' => $mimeType,
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ], 'inline');
+    }
+
     public function retry(Request $request, Material $material)
     {
         $this->authorize('update', $material);

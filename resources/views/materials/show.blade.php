@@ -64,7 +64,7 @@
             @if ($quotaLimited)
                 <p>The AI service has reached its usage limit, so it could not create the study guide. Your extracted pages and relevance checks are saved. Try again after the usage limit is resolved.</p>
             @else
-                <p>{{ $material->failure_message }}</p>
+                <p>Some pages could not be read. Any pages already saved will be kept, and you can retry without uploading the file again.</p>
             @endif
             <form method="POST" action="{{ route('materials.retry', $material) }}">@csrf<button>Retry processing</button></form>
             @if ($otherReadyMaterialCount > 0)
@@ -105,7 +105,7 @@
                         <article class="stack">
                             <h3>Page {{ $chunk->page ?? 'unknown' }} · Not included yet</h3>
                             <p>This saved page hasn’t been checked against your goal, so it is not used in your study path, tutor, or practice yet.</p>
-                            <details><summary>Review extracted page text</summary><x-material-extracted-text :content="$chunk->content" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
+                            <details><summary>Review extracted page text</summary><x-material-extracted-text :content="$chunk->content" /><x-source-figures :source="$chunk" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
                             <form method="POST" action="{{ route('materials.relevance', $material) }}">@csrf
                                 <input type="hidden" name="chunk_id" value="{{ $chunk->id }}"><input type="hidden" name="decision" value="recheck">
                                 <button>Check relevance</button>
@@ -128,7 +128,7 @@
                                 <p>{{ $reviewReason }}</p>
                             @endif
                             @php($clockAnalysis = $chunk->locator['clock_diagrams'] ?? null)
-                            <details><summary>{{ is_array($clockAnalysis) ? 'Review page text and suggested times' : 'Review page text' }}</summary><x-material-extracted-text :content="($chunk->locator['ocr_content'] ?? $chunk->content)" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
+                            <details><summary>{{ is_array($clockAnalysis) ? 'Review page text and suggested times' : 'Review page text' }}</summary><x-material-extracted-text :content="($chunk->locator['ocr_content'] ?? $chunk->content)" /><x-source-figures :source="$chunk" /><p><a href="{{ route('materials.download', $material) }}">Open the original material to compare</a></p></details>
                             @if (is_array($clockAnalysis) && ! empty($clockAnalysis['faces']))
                                 <form method="POST" action="{{ route('materials.relevance', $material) }}" class="stack">
                                     @csrf
@@ -480,7 +480,7 @@
                 @if ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->isNotEmpty())
                     <article class="card"><h3>{{ $concept->name }}</h3><p data-render-math>{{ $concept->description }}</p>
                         @if ($concept->prerequisites->isNotEmpty())<p class="muted">Prerequisites: {{ $concept->prerequisites->pluck('name')->join(', ') }}</p>@endif
-                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id)->where('extraction_version', $material->extraction_version) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote>@endforeach</details>
+                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id)->where('extraction_version', $material->extraction_version) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote><x-source-figures :source="$source" />@endforeach</details>
                     </article>
                 @endif
             @endforeach

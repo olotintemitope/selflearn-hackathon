@@ -6,8 +6,9 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Str;
 
-final class MathpixOcrClient implements CloudOcrClient
+final class MathpixOcrClient implements PdfPageFigureOcrClient
 {
     public function __construct(private HttpFactory $http) {}
 
@@ -19,6 +20,22 @@ final class MathpixOcrClient implements CloudOcrClient
             return $mimeType === 'application/pdf'
                 ? $this->extractPdf($bytes)
                 : $this->extractImage($bytes, $mimeType);
+        } catch (ConnectionException) {
+            throw new OcrException('Mathpix could not be reached. Please retry.');
+        }
+    }
+
+    public function extractPdfPages(string $bytes, array $pageNumbers): OcrResult
+    {
+        $pageNumbers = array_values(array_unique(array_filter($pageNumbers, fn ($page) => is_int($page) && $page > 0)));
+        sort($pageNumbers);
+        if ($pageNumbers === []) {
+            throw new OcrException('At least one PDF page is required for Mathpix processing.');
+        }
+        $this->ensureConfigured();
+
+        try {
+            return $this->extractPdf($bytes, $pageNumbers);
         } catch (ConnectionException) {
             throw new OcrException('Mathpix could not be reached. Please retry.');
         }
@@ -52,43 +69,58 @@ final class MathpixOcrClient implements CloudOcrClient
         );
     }
 
-    private function extractPdf(string $bytes): OcrResult
+    /** @param list<int>|null $pageNumbers */
+    private function extractPdf(string $bytes, ?array $pageNumbers = null): OcrResult
     {
+        $options = [
+            'math_inline_delimiters' => ['$', '$'],
+            'include_chemistry_as_image' => true,
+            'metadata' => ['improve_mathpix' => false],
+        ];
+        if ($pageNumbers !== null) {
+            $options['page_ranges'] = implode(',', $pageNumbers);
+        }
         $response = $this->client()
             ->attach('file', $bytes, 'material.pdf')
-            ->attach('options_json', json_encode([
-                'math_inline_delimiters' => ['$', '$'],
-                'metadata' => ['improve_mathpix' => false],
-            ], JSON_THROW_ON_ERROR))
+            ->attach('options_json', json_encode($options, JSON_THROW_ON_ERROR))
             ->post(config('services.mathpix.pdf_endpoint'));
         $this->assertSuccessful($response);
 
         $pdfId = $response->json('pdf_id');
-        if (! is_string($pdfId) || $pdfId === '') {
+        if (! is_string($pdfId) || preg_match('/\A[a-zA-Z0-9_-]{1,200}\z/', $pdfId) !== 1) {
             throw new OcrException('Mathpix did not return a document identifier.');
         }
 
         $maxPollAttempts = max(1, min(120, (int) config('services.mathpix.pdf_max_poll_attempts', 45)));
         $pollIntervalMilliseconds = max(0, min(5000, (int) config('services.mathpix.pdf_poll_interval_ms', 1000)));
 
-        for ($attempt = 0; $attempt < $maxPollAttempts; $attempt++) {
-            $status = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId);
-            $this->assertSuccessful($status);
-            if ($status->json('status') === 'completed') {
-                $lines = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId.'.lines.json');
-                $this->assertSuccessful($lines);
+        try {
+            for ($attempt = 0; $attempt < $maxPollAttempts; $attempt++) {
+                $status = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId);
+                $this->assertSuccessful($status);
+                if ($status->json('status') === 'completed') {
+                    $lines = $this->client()->get(config('services.mathpix.pdf_endpoint').'/'.$pdfId.'.lines.json');
+                    $this->assertSuccessful($lines);
 
-                return new OcrResult($this->parsePdfPages($lines->body()), null, $pdfId, 'mathpix');
+                    return new OcrResult($this->parsePdfPages($lines->body(), $pdfId), null, $pdfId, 'mathpix');
+                }
+                if ($status->json('status') === 'error') {
+                    throw new OcrException('Mathpix could not process this PDF.');
+                }
+                if ($attempt + 1 < $maxPollAttempts && $pollIntervalMilliseconds > 0) {
+                    usleep($pollIntervalMilliseconds * 1000);
+                }
             }
-            if ($status->json('status') === 'error') {
-                throw new OcrException('Mathpix could not process this PDF.');
-            }
-            if ($attempt + 1 < $maxPollAttempts && $pollIntervalMilliseconds > 0) {
-                usleep($pollIntervalMilliseconds * 1000);
+
+            throw new OcrException('Mathpix PDF processing timed out. Please retry.');
+        } finally {
+            try {
+                // Cropped images are copied into private app storage by the caller.
+                $this->client()->delete(config('services.mathpix.pdf_endpoint').'/'.$pdfId);
+            } catch (\Throwable) {
+                // Provider cleanup must not mask the extraction result or its failure.
             }
         }
-
-        throw new OcrException('Mathpix PDF processing timed out. Please retry.');
     }
 
     private function client(): PendingRequest
@@ -113,8 +145,8 @@ final class MathpixOcrClient implements CloudOcrClient
         }
     }
 
-    /** @return array<int, array{page:int, content:string}> */
-    private function parsePdfPages(string $body): array
+    /** @return array<int, array{page:int, content:string, extractor:string, warnings:list<string>, provider_request_id:string, figure_assets:list<array{bytes:string,mime_type:string,alt:string,source_url:string}>}> */
+    private function parsePdfPages(string $body, string $pdfId): array
     {
         $decoded = json_decode($body, true);
         if (is_array($decoded) && isset($decoded['pages']) && is_array($decoded['pages'])) {
@@ -128,18 +160,113 @@ final class MathpixOcrClient implements CloudOcrClient
                 ->values()->all();
         }
 
-        $normalized = collect($pages)->map(function (array $page, int $index): array {
+        $normalized = collect($pages)->map(function (array $page, int $index) use ($pdfId): array {
+            $pageNumber = (int) ($page['page'] ?? $index + 1);
+            $figureAssets = $this->downloadFigureAssets($page['lines'] ?? [], $pageNumber);
             $content = collect($page['lines'] ?? [])
-                ->map(fn ($line) => trim((string) ($line['text'] ?? $line['text_display'] ?? '')))
-                ->filter()->implode("\n");
+                ->map(fn ($line) => trim((string) ($line['text'] ?? '')))
+                ->filter()->unique()->implode("\n");
+            if ($content === '' && $figureAssets !== []) {
+                $content = 'A diagram or illustration appears on this source page.';
+            }
 
-            return ['page' => (int) ($page['page'] ?? $index + 1), 'content' => $content];
-        })->filter(fn (array $page) => $page['content'] !== '')->values()->all();
+            return [
+                'page' => $pageNumber,
+                'content' => $content,
+                'extractor' => 'mathpix',
+                'warnings' => [],
+                'provider_request_id' => $pdfId,
+                'figure_assets' => $figureAssets,
+            ];
+        })->filter(fn (array $page) => $page['content'] !== '' || $page['figure_assets'] !== [])->values()->all();
 
         if ($normalized === []) {
             throw new OcrException('Mathpix returned no readable page text.');
         }
 
         return $normalized;
+    }
+
+    /** @param array<int, array<string, mixed>> $lines
+     * @return list<array{bytes:string,mime_type:string,alt:string,source_url:string}>
+     */
+    private function downloadFigureAssets(array $lines, int $pageNumber): array
+    {
+        $figures = [];
+        $seen = [];
+        foreach ($lines as $line) {
+            $display = (string) ($line['text_display'] ?? '');
+            if ($display === '') {
+                continue;
+            }
+            preg_match_all('~https://cdn\.mathpix\.com/cropped/[^\s)\]}>]+~i', $display, $matches);
+            foreach ($matches[0] ?? [] as $matchedUrl) {
+                $url = rtrim($matchedUrl, "'\".,;");
+                if (isset($seen[$url]) || ! $this->isMathpixCropUrl($url)) {
+                    continue;
+                }
+                $seen[$url] = true;
+                if (count($figures) >= 12) {
+                    break 2;
+                }
+
+                try {
+                    $response = $this->http->withOptions(['allow_redirects' => false])->timeout(15)->get($url);
+                    if (! $response->successful()) {
+                        continue;
+                    }
+                    $mimeType = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
+                    $imageBytes = $response->body();
+                    if (strlen($imageBytes) > 5_000_000 || ! in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true)
+                        || @getimagesizefromstring($imageBytes) === false) {
+                        continue;
+                    }
+
+                    $lineText = trim(strip_tags((string) ($line['text'] ?? '')));
+                    $alt = $this->figureAlt($display, $url, $lineText);
+                    $figures[] = [
+                        'bytes' => $imageBytes,
+                        'mime_type' => $mimeType,
+                        'alt' => $alt !== '' ? $alt : 'Diagram or illustration from page '.$pageNumber,
+                        'source_url' => $url,
+                    ];
+                } catch (ConnectionException) {
+                    // A missing crop should not discard the page's recognized text.
+                }
+            }
+        }
+
+        return $figures;
+    }
+
+    private function isMathpixCropUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        return is_array($parts)
+            && ($parts['scheme'] ?? null) === 'https'
+            && strtolower((string) ($parts['host'] ?? '')) === 'cdn.mathpix.com'
+            && str_starts_with((string) ($parts['path'] ?? ''), '/cropped/');
+    }
+
+    private function figureAlt(string $display, string $url, string $context = ''): string
+    {
+        if (preg_match('~!\[([^\]]*)\]\('.preg_quote($url, '~').'~', $display, $matches) === 1) {
+            $alt = trim(strip_tags(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5)));
+            if ($alt !== '') {
+                return $alt;
+            }
+        }
+        if (preg_match('~\\\\includegraphics\[[^\]]*alt=\{([^}]*)\}[^\]]*\]\{'.preg_quote($url, '~').'\}~', $display, $matches) === 1) {
+            $alt = trim(strip_tags(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5)));
+            if ($alt !== '') {
+                return $alt;
+            }
+        }
+        if ($context !== '' && preg_match('/\b(diagram|figure|chart|graph|illustration|flowchart|hierarchy)\b/i', $context) === 1) {
+            return Str::limit($context, 180, '');
+        }
+
+        return '';
     }
 }

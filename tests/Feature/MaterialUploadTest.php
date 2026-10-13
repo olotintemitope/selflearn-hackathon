@@ -74,6 +74,50 @@ class MaterialUploadTest extends TestCase
         $this->get('/materials/'.$material->getKey())->assertNotFound();
     }
 
+    public function test_source_figure_is_served_privately_for_current_extraction_version(): void
+    {
+        Storage::fake('local');
+        $material = Material::factory()->create(['extraction_version' => 2]);
+        $path = 'materials/'.$material->learningSpace->user_id.'/'.$material->uuid.'/figures/v2/page-7/figure-1.png';
+        Storage::disk('local')->put($path, 'private diagram bytes');
+        $material->chunks()->create([
+            'extraction_version' => 2,
+            'page' => 7,
+            'content' => 'Class diagram on this page.',
+            'locator' => ['page' => 7, 'figures' => [['path' => $path, 'mime_type' => 'image/png', 'alt' => 'Class diagram']]],
+        ]);
+
+        $this->actingAs($material->learningSpace->user)
+            ->get(route('materials.page-figure', [$material, 7, 1]))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertSame('private diagram bytes', Storage::disk('local')->get($path));
+
+        $this->get(route('materials.page-figure', [$material, 7, 2]))->assertNotFound();
+
+        $otherUser = User::factory()->create();
+        $this->actingAs($otherUser)
+            ->get(route('materials.page-figure', [$material, 7, 1]))
+            ->assertForbidden();
+    }
+
+    public function test_processing_error_details_are_not_shown_as_raw_technical_text(): void
+    {
+        $material = Material::factory()->create([
+            'status' => 'failed',
+            'failure_message' => 'preg_match(): Compilation failed: unrecognized character follows \\ at offset 1',
+            'metadata' => ['failed_stage' => 'extraction'],
+        ]);
+
+        $this->actingAs($material->learningSpace->user)
+            ->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('Some pages could not be read.')
+            ->assertDontSee('preg_match()')
+            ->assertDontSee('offset 1');
+    }
+
     public function test_extracted_section_commands_are_formatted_for_reading_without_changing_saved_text(): void
     {
         $material = Material::factory()->create(['status' => 'ready', 'extraction_version' => 1]);

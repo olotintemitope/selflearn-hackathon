@@ -89,6 +89,7 @@
                                     <summary>Read the source evidence</summary>
                                     @foreach ($item->concept->sources->take(2) as $source)
                                         <blockquote data-render-math><strong>{{ $source->material->title }} · Page {{ $source->page ?? 'unknown' }}</strong><br>{{ \Illuminate\Support\Str::limit($source->content, 900) }}</blockquote>
+                                        <x-source-figures :source="$source" />
                                     @endforeach
                                 </details>
                             @endif
@@ -171,6 +172,7 @@
                                 @php($chunk = \App\Models\MaterialChunk::with('material')->find($citation['chunk_id']))
                                 @if ($chunk && $chunk->material->learning_space_id === $learningSpace->id)
                                     <blockquote data-render-math><strong>{{ $chunk->material->title }} · Page {{ $chunk->page ?? 'unknown' }}</strong><br>{{ $citation['excerpt'] }}</blockquote>
+                                    <x-source-figures :source="$chunk" />
                                 @endif
                             @endforeach
                             @foreach ($message->supplementary_sections as $section)
