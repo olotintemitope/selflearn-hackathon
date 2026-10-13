@@ -11,7 +11,12 @@ class Assessment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['concept_id', 'prompt_version'];
+    protected $fillable = ['concept_id', 'prompt_version', 'mode', 'started_at', 'duration_seconds'];
+
+    protected function casts(): array
+    {
+        return ['started_at' => 'datetime'];
+    }
 
     public function learningSpace(): BelongsTo
     {

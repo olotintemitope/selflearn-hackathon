@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Material extends Model
 {
@@ -44,8 +45,25 @@ class Material extends Model
         return $this->belongsTo(LearningSpace::class);
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Material $material): void {
+            $material->uuid ??= (string) Str::uuid();
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
+
     public function chunks(): HasMany
     {
         return $this->hasMany(MaterialChunk::class);
+    }
+
+    public function pastPaperQuestions(): HasMany
+    {
+        return $this->hasMany(PastPaperQuestion::class);
     }
 }

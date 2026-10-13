@@ -5,7 +5,7 @@ namespace App\Services\Ocr;
 final readonly class OcrResult
 {
     /**
-     * @param  array<int, array{page:int|null, content:string, extractor?:string, warnings?:list<string>, provider_request_id?:string|null, confidence?:float|null}>  $pages
+     * @param  array<int, array{page:int|null, content:string, extractor?:string, warnings?:list<string>, provider_request_id?:string|null, confidence?:float|null, confidence_rate?:float|null, clock_diagrams?:array<string,mixed>}>  $pages
      * @param  list<string>  $warnings
      */
     public function __construct(
@@ -14,5 +14,6 @@ final readonly class OcrResult
         public ?string $providerRequestId = null,
         public string $extractor = 'unknown',
         public array $warnings = [],
+        public ?float $confidenceRate = null,
     ) {}
 }

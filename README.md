@@ -1,15 +1,16 @@
-# SelfLearn hackathon starter
+# SelfLearn
 Working name: SelfLearn. Domain-agnostic learning from learner-provided materials.
 
-This is a planning and workflow starter, not a runnable Laravel application.
-No dependencies, credentials, or MCP connections are installed.
+This is a runnable Laravel monolith proof of concept for turning learner-owned materials into adaptive study.
 
 ## Start
-1. Create a Laravel application in a separate directory with your preferred supported version.
-2. Copy this starter into that application, including .agents and .github. Preserve the application's files.
-3. Read AGENTS.md and docs/PRODUCT.md, then docs/WORKFLOW.md.
-4. Follow docs/SETUP.md and merge .env.hackathon.example into your application’s local .env; never commit real credentials.
-5. Start with docs/backlog/01-material-to-concepts.md.
+1. Use PHP 8.3+ and Node 22.12+ (`nvm use`), then run `composer install` and `npm install`.
+2. Copy `.env.example` to `.env`, run `php artisan key:generate`, and configure SQLite or another database.
+3. Add local Mathpix and OpenAI credentials to `.env`; never commit real credentials.
+4. Run `php artisan migrate`, `npm run build`, and `php artisan serve`.
+5. In another terminal run `php artisan queue:work`.
+
+The ingestion flow accepts private image/PDF uploads and retains originals. Image scans and STEM-signalled/unreadable PDF pages use Mathpix; readable non-STEM selectable PDF text uses local extraction. Related pages feed source-linked concepts, with uncertain material held for learner review. New accounts receive one study space automatically.
 
 Repository skills are under .agents/skills. They are project workflow files, not installed personal ChatGPT skills.
 Use conventional commits and one focused branch per slice.
@@ -18,4 +19,7 @@ Suggested first prompt:
 “Read AGENTS.md and docs/backlog/01-material-to-concepts.md. Inspect the application, implement the smallest complete vertical slice, run relevant checks, and report evidence for each acceptance criterion.”
 
 ## Recording POC decisions
-Use private local storage; AWS credentials and infrastructure are not required. Mathpix and AI calls run server-side and require internet. See docs/LOW_BANDWIDTH.md for implementation and recorded proof. This package supplies requirements and placeholders, not working offline code.
+Use private local storage; AWS credentials and infrastructure are not required. Mathpix and AI calls run server-side and require internet. The browser-side offline flow remains a later backlog slice; see `docs/LOW_BANDWIDTH.md`.
+
+## Existing extraction capabilities
+Read docs/EXTRACTION_STACK.md: selectable non-STEM PDF text uses pdftotext; scans and STEM-signalled pages use Mathpix; ImageMagick rasterizes relevant PDF pages. Tesseract is installed but not used in the active OCR route. The other listed packages are optional future capabilities, not newly installed dependencies.

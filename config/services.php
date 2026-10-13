@@ -40,22 +40,30 @@ return [
         'app_key' => env('MATHPIX_APP_KEY'),
         'image_endpoint' => env('MATHPIX_IMAGE_ENDPOINT', 'https://api.mathpix.com/v3/text'),
         'pdf_endpoint' => env('MATHPIX_PDF_ENDPOINT', 'https://api.mathpix.com/v3/pdf'),
+        'pdf_max_poll_attempts' => (int) env('MATHPIX_PDF_MAX_POLL_ATTEMPTS', 45),
+        'pdf_poll_interval_ms' => (int) env('MATHPIX_PDF_POLL_INTERVAL_MS', 1000),
+        'confidence_rate_review_threshold' => (float) env('MATHPIX_CONFIDENCE_RATE_REVIEW_THRESHOLD', 0.75),
     ],
 
     'extraction' => [
         'pdftotext_binary' => env('PDFTOTEXT_BINARY', 'pdftotext'),
         'pdfinfo_binary' => env('PDFINFO_BINARY', 'pdfinfo'),
+        'pdfimages_binary' => env('PDFIMAGES_BINARY', 'pdfimages'),
+        'pdfimages_page_batch' => (int) env('PDFIMAGES_PAGE_BATCH', 10),
+        'page_batch_size' => (int) env('MATERIAL_PAGE_BATCH_SIZE', 5),
+        'pdftoppm_binary' => env('PDFTOPPM_BINARY', 'pdftoppm'),
         'magick_binary' => env('MAGICK_BINARY', 'magick'),
-        'tesseract_binary' => env('TESSERACT_BINARY', 'tesseract'),
-        'tesseract_language' => env('TESSERACT_LANGUAGE', 'eng'),
         'process_timeout' => (int) env('EXTRACTION_PROCESS_TIMEOUT', 30),
-        'max_pdf_pages' => (int) env('EXTRACTION_MAX_PDF_PAGES', 50),
+        'max_pdf_pages' => (int) env('EXTRACTION_MAX_PDF_PAGES', 500),
     ],
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'endpoint' => env('OPENAI_API_ENDPOINT', 'https://api.openai.com/v1'),
-        'model' => env('OPENAI_MODEL', 'gpt-6-astra'),
+        'model' => env('OPENAI_MODEL', 'gpt-6-luna'),
+        'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),
+        'tts_voice' => env('OPENAI_TTS_VOICE', 'marin'),
+        'tts_cache_days' => (int) env('OPENAI_TTS_CACHE_DAYS', 30),
     ],
 
 ];

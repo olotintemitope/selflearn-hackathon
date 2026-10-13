@@ -2,11 +2,11 @@
 Learners scan handwritten notes or upload PDFs and turn scattered resources into a learning path, grounded tutor, quizzes, and next-step guidance. The idea originated with Temitope; this package organizes its implementation.
 
 ## Demo outcome
-Upload → extract → concepts → learning path → tutor → quiz → evidence → recommended revision.
+Upload → extract → concepts → learning path → source-grounded lesson → learner check and tutor feedback → quiz with worked solutions → latest evidence-based progress → recommended next lesson or prerequisite review.
 Demonstrate one full loop and one second-domain fixture to show domain independence.
 
 ## Must have
-Image/PDF ingestion, extraction review, concept dependencies, ordered path, cited tutor responses, concept-tagged MCQs, evidence-based progress, and remedial recommendation.
+Image/PDF ingestion, extraction review, concept dependencies, ordered path, cited tutor responses, concept-tagged MCQs and written practice, worked feedback, latest-attempt progress based on MCQ and marked written responses, visible path-practice completion, and a direct next-step or prerequisite-review action.
 
 ## Constraints
 Text-first mobile UI; keyboard access; readable contrast; uncertainty surfaced; private materials; source traceability. Cache a selected study pack for low bandwidth. New AI responses require connectivity.

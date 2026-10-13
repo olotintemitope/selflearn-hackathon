@@ -2,6 +2,8 @@
 
 namespace App\Services\Learning;
 
+use App\Support\LearnerText;
+
 final class ConceptGraphValidator
 {
     public function validate(array $data, array $knownChunkIds): array
@@ -14,10 +16,11 @@ final class ConceptGraphValidator
 
         $ids = [];
         $names = [];
+        $cleanConcepts = [];
         foreach ($concepts as $concept) {
             $id = $concept['id'] ?? null;
-            $name = trim((string) ($concept['name'] ?? ''));
-            $description = trim((string) ($concept['description'] ?? ''));
+            $name = LearnerText::withoutEmDash((string) ($concept['name'] ?? ''));
+            $description = LearnerText::withoutEmDash((string) ($concept['description'] ?? ''));
             $refs = $concept['source_chunk_ids'] ?? [];
             if (! is_string($id) || $id === '' || isset($ids[$id]) || $name === '' || $description === '' || ! is_array($refs) || $refs === []) {
                 throw new ConceptExtractionException('Concept output contains invalid or duplicate entries.');
@@ -28,6 +31,7 @@ final class ConceptGraphValidator
             }
             $ids[$id] = true;
             $names[$normalName] = true;
+            $cleanConcepts[] = [...$concept, 'name' => $name, 'description' => $description];
         }
 
         $graph = array_fill_keys(array_keys($ids), []);
@@ -41,7 +45,7 @@ final class ConceptGraphValidator
         }
         $this->assertAcyclic($graph);
 
-        return ['concepts' => $concepts, 'dependencies' => $dependencies];
+        return ['concepts' => $cleanConcepts, 'dependencies' => $dependencies];
     }
 
     private function assertAcyclic(array $graph): void
