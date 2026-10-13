@@ -31,6 +31,7 @@ class StudyPathTutorTest extends TestCase
         $this->actingAs($space->user)->get(route('study.show', $space))
             ->assertOk()
             ->assertSee('data-read-aloud-language="yo"', false)
+            ->assertSee('data-read-aloud-supported="false"', false)
             ->assertSee('data-read-aloud-target="tutor-answer-'.$message->id.'"', false)
             ->assertSee('<audio class="read-aloud-player" controls', false)
             ->assertSee('<audio class="read-aloud-player" controls hidden', false)

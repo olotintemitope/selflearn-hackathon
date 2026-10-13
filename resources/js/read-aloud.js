@@ -67,6 +67,11 @@ if (readAloudControls.length) {
                 return;
             }
 
+            if (controls.dataset.readAloudSupported !== 'true') {
+                status.textContent = `Audio is not available in ${languageName} yet. You can still read it on screen.`;
+                return;
+            }
+
             if (active) stopActive('Previous audio stopped.');
 
             const abortController = new AbortController();
