@@ -64,6 +64,7 @@ return [
         'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),
         'tts_voice' => env('OPENAI_TTS_VOICE', 'marin'),
         'tts_cache_days' => (int) env('OPENAI_TTS_CACHE_DAYS', 30),
+        'tts_supported_languages' => ['en'],
     ],
 
 ];

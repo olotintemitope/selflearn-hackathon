@@ -22,6 +22,8 @@ class AccessibilityPreferenceTest extends TestCase
             ->assertSee('Listen to content')
             ->assertSee('Read on screen')
             ->assertSee('Not now')
+            ->assertSee('aria-label="Accessibility preferences" title="Accessibility preferences"', false)
+            ->assertSee('<svg class="accessibility-preferences-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"', false)
             ->assertSee('This choice does not change screen-reader or keyboard support.')
             ->assertDontSee('blind')
             ->assertDontSee('deaf');
@@ -44,7 +46,7 @@ class AccessibilityPreferenceTest extends TestCase
             ->assertOk()
             ->assertSee('data-accessibility-dialog data-has-preference="true"', false)
             ->assertSee('value="read" checked', false)
-            ->assertSee('Accessibility preferences');
+            ->assertSee('aria-label="Accessibility preferences" title="Accessibility preferences"', false);
     }
 
     public function test_invalid_preference_is_rejected_and_guests_cannot_save_one(): void
