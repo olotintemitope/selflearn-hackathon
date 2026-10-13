@@ -80,6 +80,7 @@
                                     @if ($sources->has($sourceId))
                                         @php($source = $sources->get($sourceId))
                                         <p class="muted">{{ \App\Support\LearnerText::withoutEmDash($source->material->title) }} · Page {{ $source->page ?? 'unknown' }}</p>
+                                        <x-source-figures :source="$source" />
                                     @endif
                                 @endforeach
                             </details>
@@ -115,6 +116,7 @@
                                 @if ($sources->has($sourceId))
                                     @php($source = $sources->get($sourceId))
                                     <p class="muted">{{ \App\Support\LearnerText::withoutEmDash($source->material->title) }} · Page {{ $source->page ?? 'unknown' }}</p>
+                                    <x-source-figures :source="$source" />
                                 @endif
                             @endforeach
                         </details>
@@ -172,6 +174,7 @@
                                 @if ($sources->has($sourceId))
                                     @php($source = $sources->get($sourceId))
                                     <p class="muted">{{ \App\Support\LearnerText::withoutEmDash($source->material->title) }} · Page {{ $source->page ?? 'unknown' }}</p>
+                                    <x-source-figures :source="$source" />
                                 @endif
                             @endforeach
                         </details>

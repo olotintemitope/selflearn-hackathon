@@ -178,6 +178,7 @@ final class MaterialExtractionRouter implements BatchOcrClient
             $fullScanThreshold = $this->fullPageScanVisualThreshold($visualRatios, $layoutSignals['full_page_scan']);
             $pages = [];
             $warnings = [];
+            $mathpixPageWarnings = [];
             foreach ($rawPages as $index => $rawPage) {
                 $pageNumber = $rangeStart + $index;
                 $text = trim($rawPage);
@@ -197,10 +198,36 @@ final class MaterialExtractionRouter implements BatchOcrClient
                     $visualSignal => 'Page structure contains meaningful non-text visual content; Mathpix was used to capture it.',
                     default => null,
                 };
-                $page = $this->extractPdfPage($path, $pageNumber, $warning);
-                $pages[] = $page;
-                $warnings = array_merge($warnings, $page['warnings']);
+                $mathpixPageWarnings[$pageNumber] = $warning;
             }
+
+            if ($mathpixPageWarnings !== [] && $this->cloud instanceof PdfPageFigureOcrClient) {
+                $mathpix = $this->cloud->extractPdfPages($bytes, array_keys($mathpixPageWarnings));
+                $returnedPages = array_column($mathpix->pages, 'page');
+                sort($returnedPages);
+                $expectedPages = array_keys($mathpixPageWarnings);
+                sort($expectedPages);
+                if ($returnedPages !== $expectedPages) {
+                    throw new OcrException('Mathpix did not return every selected source page.');
+                }
+                foreach ($mathpix->pages as $page) {
+                    $pageNumber = $page['page'];
+                    $page['warnings'] = array_values(array_unique(array_merge(
+                        array_filter([$mathpixPageWarnings[$pageNumber] ?? null]),
+                        $page['warnings'] ?? [],
+                    )));
+                    $pages[] = $page;
+                    $warnings = array_merge($warnings, $page['warnings']);
+                }
+            } else {
+                foreach ($mathpixPageWarnings as $pageNumber => $warning) {
+                    $page = $this->extractPdfPage($path, $pageNumber, $warning);
+                    $pages[] = $page;
+                    $warnings = array_merge($warnings, $page['warnings']);
+                }
+            }
+
+            usort($pages, fn (array $first, array $second) => ($first['page'] ?? 0) <=> ($second['page'] ?? 0));
 
             $extractors = array_values(array_unique(array_column($pages, 'extractor')));
 

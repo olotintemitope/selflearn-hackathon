@@ -18,6 +18,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ProcessMaterial implements ShouldQueue
@@ -108,6 +109,7 @@ class ProcessMaterial implements ShouldQueue
                         if (! is_int($pageNumber) || $pageNumber < $firstPage || $pageNumber > $lastPage) {
                             throw new MaterialRelevanceException('The extractor returned a page outside the requested batch.');
                         }
+                        $page = $this->persistFigureAssets($material, $page, $version);
                         $page = $this->applyClockGoalContext($page, $material);
                         $material->chunks()->updateOrCreate([
                             'extraction_version' => $version, 'page' => $pageNumber,
@@ -121,6 +123,7 @@ class ProcessMaterial implements ShouldQueue
                                 'confidence' => $page['confidence'] ?? null,
                                 'confidence_rate' => $page['confidence_rate'] ?? null,
                                 'clock_diagrams' => $page['clock_diagrams'] ?? null,
+                                'figures' => $page['figures'] ?? [],
                             ],
                             'relevance_status' => 'pending', 'relevance_confidence' => null, 'relevance_reason' => null,
                         ]);
@@ -172,6 +175,7 @@ class ProcessMaterial implements ShouldQueue
                 } else {
                     $material->chunks()->delete();
                     foreach ($ocrResult->pages as $page) {
+                        $page = $this->persistFigureAssets($material, $page, $version);
                         $page = $this->applyClockGoalContext($page, $material);
                         $material->chunks()->create([
                             'extraction_version' => $version,
@@ -186,6 +190,7 @@ class ProcessMaterial implements ShouldQueue
                                 'confidence' => $page['confidence'] ?? null,
                                 'confidence_rate' => $page['confidence_rate'] ?? $ocrResult->confidenceRate,
                                 'clock_diagrams' => $page['clock_diagrams'] ?? null,
+                                'figures' => $page['figures'] ?? [],
                             ],
                         ]);
                     }
@@ -441,6 +446,45 @@ class ProcessMaterial implements ShouldQueue
                 || (! str_contains(mb_strtolower($warning), 'clock reader')
                     && ! str_contains(mb_strtolower($warning), 'contains clock faces')),
         ));
+
+        return $page;
+    }
+
+    /** @return array<string, mixed> */
+    private function persistFigureAssets(Material $material, array $page, int $version): array
+    {
+        $assets = $page['figure_assets'] ?? [];
+        unset($page['figure_assets']);
+        if (! is_array($assets) || $assets === []) {
+            return $page;
+        }
+
+        $mimeExtensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        $storedFigures = [];
+        foreach (array_values($assets) as $asset) {
+            if (! is_array($asset) || ! is_string($asset['bytes'] ?? null) || ! is_string($asset['mime_type'] ?? null)) {
+                continue;
+            }
+            $mimeType = strtolower($asset['mime_type']);
+            if (! isset($mimeExtensions[$mimeType]) || strlen($asset['bytes']) > 5_000_000
+                || @getimagesizefromstring($asset['bytes']) === false) {
+                continue;
+            }
+            $pageNumber = max(1, (int) ($page['page'] ?? 1));
+            $figureNumber = count($storedFigures) + 1;
+            $path = 'materials/'.$material->learningSpace->user_id.'/'.$material->uuid
+                .'/figures/v'.$version.'/page-'.$pageNumber.'/figure-'.$figureNumber.'.'.$mimeExtensions[$mimeType];
+            if (! Storage::disk('local')->put($path, $asset['bytes'])) {
+                throw new MaterialRelevanceException('A source illustration could not be saved securely. Please retry.');
+            }
+
+            $storedFigures[] = [
+                'path' => $path,
+                'mime_type' => $mimeType,
+                'alt' => Str::limit(strip_tags((string) ($asset['alt'] ?? 'Diagram or illustration')), 240, ''),
+            ];
+        }
+        $page['figures'] = $storedFigures;
 
         return $page;
     }

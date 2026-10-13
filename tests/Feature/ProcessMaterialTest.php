@@ -43,8 +43,11 @@ class ProcessMaterialTest extends TestCase
         ]);
         $material->learningSpace->update(['goal' => 'Photosynthesis and plant energy']);
         Storage::disk('local')->put($material->private_source_path, 'real-image-bytes');
-        $ocr = new class implements OcrClient
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p1sAAAAASUVORK5CYII=');
+        $ocr = new class($png) implements OcrClient
         {
+            public function __construct(private string $png) {}
+
             public function extract(string $bytes, string $mimeType): OcrResult
             {
                 return new OcrResult([[
@@ -52,6 +55,10 @@ class ProcessMaterialTest extends TestCase
                     'content' => 'Photosynthesis converts light energy into chemical energy.',
                     'extractor' => 'tesseract',
                     'warnings' => ['Page 1 required local OCR.'],
+                    'figure_assets' => [
+                        ['bytes' => 'not-an-image', 'mime_type' => 'image/png', 'alt' => 'Invalid crop'],
+                        ['bytes' => $this->png, 'mime_type' => 'image/png', 'alt' => 'Photosynthesis diagram'],
+                    ],
                 ]], .97, 'ocr-1', 'tesseract', ['Page 1 required local OCR.']);
             }
         };
@@ -89,6 +96,10 @@ class ProcessMaterialTest extends TestCase
         $this->assertSame('tesseract', $material->metadata['extractor']);
         $this->assertSame('related', $material->chunks()->first()->relevance_status);
         $this->assertSame(['Page 1 required local OCR.'], $material->metadata['extraction_warnings']);
+        $figure = $material->chunks()->first()->locator['figures'][0];
+        $this->assertSame('Photosynthesis diagram', $figure['alt']);
+        $this->assertStringEndsWith('/figure-1.png', $figure['path']);
+        Storage::disk('local')->assertExists($figure['path']);
         $concept = $material->learningSpace->concepts()->firstOrFail();
         $this->assertSame([$material->chunks()->first()->id], $concept->sources()->pluck('material_chunks.id')->all());
         Storage::disk('local')->assertExists($material->private_source_path);
