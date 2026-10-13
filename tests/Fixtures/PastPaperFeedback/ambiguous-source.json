@@ -1,0 +1,12 @@
+{
+  "question_type": "structured_response",
+  "question": "Explain why the reaction speeds up.",
+  "learner_response": "The particles move faster.",
+  "source_text": "Question 4. Explain why the reaction speeds up.",
+  "expected_feedback": {
+    "status": "needs_review",
+    "feedback": "This page does not explain the reaction, so it is not enough to check your answer.",
+    "steps": [],
+    "source_chunk_ids": []
+  }
+}

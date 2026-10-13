@@ -10,6 +10,8 @@ use App\Models\PastPaperQuestion;
 use App\Models\User;
 use App\Services\Learning\PastPaperQuestionIndexer;
 use App\Services\Learning\PastPaperQuestionParser;
+use App\Services\Learning\PastPaperWrittenFeedbackException;
+use App\Services\Learning\PastPaperWrittenFeedbackGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -79,9 +81,131 @@ class PastPaperPracticeTest extends TestCase
         $this->assertSame('none', $attempt->marking_basis);
         $this->get(route('past-paper-attempts.show', $attempt))
             ->assertOk()
-            ->assertSee('no score was assigned')
+            ->assertSee('No score was assigned.')
             ->assertSee('A description that sounds explanatory.')
-            ->assertSee('There was no clear answer in the paper to check it against.');
+            ->assertSee('written feedback is not available right now');
+    }
+
+    public function test_submitted_written_answer_gets_source_linked_explanation_without_a_score(): void
+    {
+        $fixture = json_decode(file_get_contents(base_path('tests/Fixtures/PastPaperFeedback/work-formula-fill-gap.json')), true, flags: JSON_THROW_ON_ERROR);
+        [$user, $material, $question] = $this->candidate([
+            'question_type' => 'fill_gap',
+            'prompt' => $fixture['question'],
+            'options' => null,
+            'expected_answer' => 'W = Fd',
+            'answer_source' => 'source_expected_response',
+            'source_text' => $fixture['question'],
+        ]);
+        $longSourceText = $fixture['source_text'].' '.str_repeat('Additional source text. ', 100);
+        $question->sourceChunk->update(['content' => $longSourceText]);
+        $fake = new class($fixture, $question->sourceChunk->id) implements PastPaperWrittenFeedbackGenerator
+        {
+            public array $received = [];
+
+            public function __construct(private array $fixture, private int $sourceId) {}
+
+            public function generate(string $question, string $questionType, string $learnerResponse, array $evidence): array
+            {
+                $this->received = compact('question', 'questionType', 'learnerResponse', 'evidence');
+
+                return [
+                    ...$this->fixture['expected_feedback'],
+                    'source_chunk_ids' => [$this->sourceId],
+                ];
+            }
+        };
+        $this->app->instance(PastPaperWrittenFeedbackGenerator::class, $fake);
+
+        $this->actingAs($user)->get(route('past-paper-questions.practice', [$material, $question]))
+            ->assertOk()
+            ->assertDontSee('Understand the answer')
+            ->assertDontSee('You used the formula stated in the paper.');
+
+        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => $fixture['learner_response']])
+            ->assertRedirect();
+
+        $attempt = PastPaperAttempt::query()->firstOrFail();
+        $this->assertSame('submitted_ungraded', $attempt->outcome);
+        $this->assertSame('none', $attempt->marking_basis);
+        $this->assertSame('ready', $attempt->written_feedback_status);
+        $this->assertSame([$question->sourceChunk->id], $attempt->written_feedback_source_chunk_ids);
+        $this->assertSame($fixture['learner_response'], $fake->received['learnerResponse']);
+        $this->assertSame('fill_gap', $fake->received['questionType']);
+        $this->assertSame((int) $question->sourceChunk->id, $fake->received['evidence'][0]['id']);
+
+        $result = $this->get(route('past-paper-attempts.show', $attempt));
+        $result->assertOk()
+            ->assertViewHas('writtenFeedbackEvidence', fn ($items): bool => $items->count() === 1
+                && mb_strlen($items[0]['excerpt']) === 900
+                && $items[0]['excerpt'] === mb_substr($longSourceText, 0, 900)
+                && $items[0]['page'] === 12)
+            ->assertSee('No score was assigned.')
+            ->assertSee('Understand the answer')
+            ->assertSee('<p data-render-math>You used the formula stated in the paper.</p>', false)
+            ->assertSee('<li data-render-math><strong>Use the source formula</strong><br>The paper shows \\(W = Fd\\).</li>', false)
+            ->assertSee('<li data-render-math><strong>Match the symbols</strong><br>The source defines \\(F\\) as force and \\(d\\) as distance.</li>', false)
+            ->assertSee('The paper shows \\(W = Fd\\).')
+            ->assertSee('From your uploaded paper')
+            ->assertSee($material->title.' · page 12 · question 1')
+            ->assertSee('Work is calculated with \\(W = Fd\\), where \\(F\\) is force and \\(d\\) is distance.')
+            ->assertSee('This is practice feedback, not an official mark.')
+            ->assertDontSee('written_feedback_status');
+    }
+
+    public function test_written_feedback_with_foreign_source_citation_is_not_shown(): void
+    {
+        [$user, $material, $question] = $this->candidate([
+            'question_type' => 'structured_response', 'options' => null,
+        ]);
+        $this->app->instance(PastPaperWrittenFeedbackGenerator::class, new class implements PastPaperWrittenFeedbackGenerator
+        {
+            public function generate(string $question, string $questionType, string $learnerResponse, array $evidence): array
+            {
+                return [
+                    'status' => 'ready', 'feedback' => 'Unsupported response feedback.',
+                    'steps' => [['title' => 'Step', 'detail' => 'This should not be stored.']],
+                    'source_chunk_ids' => [999999],
+                ];
+            }
+        });
+
+        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'My answer'])
+            ->assertRedirect();
+
+        $attempt = PastPaperAttempt::query()->firstOrFail();
+        $this->assertSame('unavailable', $attempt->written_feedback_status);
+        $this->assertNull($attempt->written_feedback);
+        $this->get(route('past-paper-attempts.show', $attempt))
+            ->assertOk()
+            ->assertSee('written feedback is not available right now')
+            ->assertDontSee('Unsupported response feedback.');
+    }
+
+    public function test_provider_failure_keeps_the_written_response_and_displays_clear_unscored_state(): void
+    {
+        [$user, $material, $question] = $this->candidate([
+            'question_type' => 'structured_response', 'options' => null,
+        ]);
+        $this->app->instance(PastPaperWrittenFeedbackGenerator::class, new class implements PastPaperWrittenFeedbackGenerator
+        {
+            public function generate(string $question, string $questionType, string $learnerResponse, array $evidence): array
+            {
+                throw new PastPaperWrittenFeedbackException('unhelpful internal message');
+            }
+        });
+
+        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'My answer'])
+            ->assertRedirect();
+
+        $attempt = PastPaperAttempt::query()->firstOrFail();
+        $this->assertSame(['value' => 'My answer'], $attempt->response);
+        $this->assertSame('submitted_ungraded', $attempt->outcome);
+        $this->assertSame('unavailable', $attempt->written_feedback_status);
+        $this->get(route('past-paper-attempts.show', $attempt))
+            ->assertOk()
+            ->assertSee('Your response is saved, but written feedback is not available right now.')
+            ->assertDontSee('unhelpful internal message');
     }
 
     public function test_uncertain_candidate_cannot_be_submitted(): void
@@ -399,13 +523,19 @@ class PastPaperPracticeTest extends TestCase
             'response' => ['value' => 'A'],
             'outcome' => 'correct',
             'marking_basis' => 'extracted_source_response',
+            'written_feedback_status' => 'ready',
+            'written_feedback' => 'Private practice feedback.',
+            'written_feedback_steps' => [['title' => 'Step', 'detail' => 'Private explanation.']],
+            'written_feedback_source_chunk_ids' => [$question->material_chunk_id],
             'submitted_at' => now(),
         ]);
         $other = User::factory()->create();
 
         $this->actingAs($other)->get(route('past-paper-questions.practice', [$material, $question]))->assertForbidden();
         $this->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'A'])->assertForbidden();
-        $this->get(route('past-paper-attempts.show', $attempt))->assertForbidden();
+        $this->get(route('past-paper-attempts.show', $attempt))
+            ->assertForbidden()
+            ->assertDontSee('Private practice feedback.');
     }
 
     private function candidate(array $overrides = []): array

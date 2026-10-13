@@ -10,37 +10,120 @@ use App\Models\LearningSpace;
  */
 final class LocalMaterialRelevanceClassifier implements MaterialRelevanceClassifier
 {
-    public const VERSION = 'local-keyword-relevance-v1';
+    public const VERSION = 'local-topic-anchor-v2';
+
+    /**
+     * Words that describe a general-purpose study space rather than its topic.
+     * These are intentionally not school-subject labels. A broad goal must not
+     * make two unrelated uploads look related merely because both are study
+     * materials or exams.
+     */
+    private const BROAD_CONTEXT_TERMS = [
+        'any', 'anything', 'batch', 'book', 'books', 'class', 'classes', 'document', 'documents',
+        'exam', 'exams', 'evaluation', 'file', 'files', 'general', 'guide', 'guides', 'help', 'my', 'real',
+        'learn', 'learning', 'material', 'materials', 'more', 'notes', 'paper', 'papers', 'past',
+        'pdf', 'pdfs', 'practice', 'read', 'reading', 'reference', 'references', 'resource',
+        'resources', 'review', 'scan', 'scanned', 'scans', 'space', 'study', 'subject', 'subjects',
+        'topic', 'topics', 'upload', 'uploaded', 'uploads', 'various', 'wide',
+    ];
 
     private const STOP_WORDS = [
         'about', 'after', 'also', 'and', 'any', 'are', 'because', 'been', 'being', 'between',
         'book', 'chapter', 'course', 'could', 'does', 'each', 'exam', 'explain', 'from', 'have',
         'into', 'learn', 'learning', 'material', 'materials', 'more', 'notes', 'paper', 'pages',
         'please', 'practice', 'references', 'should', 'study', 'that', 'their', 'them', 'there',
-        'these', 'this', 'those', 'through', 'understand', 'using', 'want', 'what', 'when',
-        'where', 'which', 'with', 'would', 'your',
+        'a', 'an', 'as', 'at', 'be', 'by', 'can', 'did', 'do', 'for', 'had', 'has', 'if', 'in',
+        'is', 'it', 'its', 'may', 'me', 'my', 'no', 'not', 'of', 'on', 'or', 'our', 'out', 'so',
+        'such', 'than', 'the', 'these', 'this', 'those', 'through', 'to', 'too', 'understand',
+        'up', 'using', 'via', 'want', 'was', 'we', 'were', 'what', 'when', 'where', 'which', 'will',
+        'with', 'would', 'you', 'your',
     ];
 
-    public function classify(LearningSpace $space, array $chunks, array $existingConcepts): array
+    public function hasBroadGoal(LearningSpace $space): bool
     {
-        $context = implode(' ', array_filter([
+        $goalContext = implode(' ', array_filter([
             $space->title,
             $space->goal,
             $space->subject,
-            ...array_map(fn (array $concept) => ($concept['name'] ?? '').' '.($concept['description'] ?? ''), $existingConcepts),
         ]));
-        $terms = $this->terms($context);
+        $specificGoalTerms = array_diff($this->terms($goalContext), self::BROAD_CONTEXT_TERMS);
 
-        return array_map(function (array $chunk) use ($terms): array {
+        return count($specificGoalTerms) === 0;
+    }
+
+    public function classify(LearningSpace $space, array $chunks, array $existingConcepts): array
+    {
+        $broadGoal = $this->hasBroadGoal($space);
+        $goalContext = implode(' ', array_filter([
+            $space->title,
+            $space->goal,
+            $space->subject,
+        ]));
+        $goalTerms = $this->terms($goalContext);
+        $topicContext = implode(' ', array_map(
+            fn (array $concept) => ($concept['name'] ?? '').($broadGoal ? '' : ' '.($concept['description'] ?? '')),
+            $existingConcepts,
+        ));
+        $topicTerms = $this->terms($topicContext);
+        $terms = array_values(array_unique([...$goalTerms, ...$topicTerms]));
+
+        return array_map(function (array $chunk) use ($terms, $topicTerms, $broadGoal, $existingConcepts): array {
             $pageTerms = $this->terms($chunk['content']);
             $matches = array_values(array_intersect($terms, $pageTerms));
+            $matchedTopics = [];
+            $partialTopics = [];
+            if ($broadGoal && $existingConcepts !== []) {
+                foreach ($existingConcepts as $concept) {
+                    $name = trim((string) ($concept['name'] ?? ''));
+                    $nameTerms = $this->terms($name);
+                    if ($nameTerms === []) {
+                        continue;
+                    }
+
+                    $nameMatches = array_values(array_intersect($nameTerms, $pageTerms));
+                    $requiredMatches = count($nameTerms) === 1
+                        ? 1
+                        : max(2, (int) ceil(count($nameTerms) * 0.67));
+
+                    if (count($nameMatches) >= $requiredMatches) {
+                        $matchedTopics[] = $name;
+                    } elseif ($nameMatches !== []) {
+                        $partialTopics[] = $name;
+                    }
+                }
+            }
             $termCount = count($terms);
             $coverage = $termCount === 0 ? 0.0 : count($matches) / $termCount;
 
-            if (trim($chunk['content']) === '' || $termCount === 0) {
+            if (trim($chunk['content']) === '') {
                 $status = 'possibly_related';
                 $confidence = 0.5;
                 $reason = 'The study goal or extracted page has too little readable text for a reliable local match.';
+            } elseif ($broadGoal && $existingConcepts === [] && $pageTerms !== []) {
+                // The first readable material gives a broad study space a
+                // starting topic. Later uploads are checked against concepts
+                // grounded in this material instead of the generic goal words.
+                $status = 'related';
+                $confidence = 0.68;
+                $reason = 'This first clear material will help set the topic for your study space.';
+            } elseif ($broadGoal && $topicTerms === []) {
+                $status = 'possibly_related';
+                $confidence = 0.5;
+                $reason = 'The current study path does not yet have enough topic clues to compare this page reliably.';
+            } elseif ($broadGoal && $existingConcepts !== []) {
+                if ($matchedTopics !== []) {
+                    $status = 'related';
+                    $confidence = min(0.94, 0.78 + (count($matchedTopics) / max(1, count($existingConcepts))) * 0.16);
+                    $reason = 'This page clearly matches a topic already in your study path: '.implode(', ', array_slice($matchedTopics, 0, 3)).'.';
+                } elseif ($partialTopics !== []) {
+                    $status = 'possibly_related';
+                    $confidence = 0.58;
+                    $reason = 'This page shares a few words with your study topics, but the connection is not clear yet. Check it before adding it to your study path.';
+                } else {
+                    $status = 'separate';
+                    $confidence = 0.86;
+                    $reason = 'This page covers a different topic from the materials already in this study space, so it was kept separate.';
+                }
             } elseif (count($matches) >= 2 || ($termCount === 1 && count($matches) === 1)) {
                 $status = 'related';
                 $confidence = min(0.96, 0.78 + $coverage * 0.18);

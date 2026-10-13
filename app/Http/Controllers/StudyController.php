@@ -103,7 +103,7 @@ class StudyController extends Controller
 
         $chunks = $retriever->retrieve($learningSpace, $question, conceptId: $targetConceptId);
         if ($chunks->isEmpty()) {
-            $learningSpace->tutorMessages()->create([
+            $reply = $learningSpace->tutorMessages()->create([
                 'role' => 'assistant',
                 'content' => $fallbackCopy->text($desiredLanguage, 'no_evidence'),
                 'citations' => [], 'supplementary_sections' => [], 'insufficient_evidence' => true,
@@ -113,7 +113,10 @@ class StudyController extends Controller
                 'language' => $desiredLanguage,
             ]);
 
-            return back()->with('status', $fallbackCopy->text($desiredLanguage, 'no_evidence_status'));
+            return back()
+                ->with('status', $fallbackCopy->text($desiredLanguage, 'no_evidence_status'))
+                ->with('tutor_reply_id', $reply->id)
+                ->withFragment('tutor-reply-status-'.$reply->id);
         }
 
         $evidence = $chunks->map(fn ($chunk) => [
@@ -123,7 +126,7 @@ class StudyController extends Controller
 
         try {
             $answer = $tutor->answer($question, $evidence, $learningSpace->preferred_language, $conversation);
-            $learningSpace->tutorMessages()->create([
+            $reply = $learningSpace->tutorMessages()->create([
                 'role' => 'assistant', 'content' => $answer['answer'], 'citations' => $answer['citations'],
                 'supplementary_sections' => $answer['supplementary'],
                 'insufficient_evidence' => $answer['insufficient'], 'prompt_version' => OpenAiTutor::PROMPT_VERSION,
@@ -137,7 +140,7 @@ class StudyController extends Controller
                 : null;
 
             if ($guidedNote) {
-                $learningSpace->tutorMessages()->create([
+                $reply = $learningSpace->tutorMessages()->create([
                     'role' => 'assistant', 'content' => $guidedNote['content'],
                     'citations' => $guidedNote['citations'], 'supplementary_sections' => [],
                     'status' => 'fallback', 'prompt_version' => OpenAiTutor::PROMPT_VERSION,
@@ -146,13 +149,16 @@ class StudyController extends Controller
                     'language' => $desiredLanguage,
                 ]);
 
-                return back()->with('status', $fallbackCopy->text($desiredLanguage, 'citation_fallback_status'));
+                return back()
+                    ->with('status', $fallbackCopy->text($desiredLanguage, 'citation_fallback_status'))
+                    ->with('tutor_reply_id', $reply->id)
+                    ->withFragment('tutor-reply-status-'.$reply->id);
             }
 
             $failureMessage = $exception->getMessage() === 'The tutor returned an unresolved citation.'
                 ? $fallbackCopy->text($desiredLanguage, 'citation_unavailable')
                 : mb_substr($exception->getMessage(), 0, 500);
-            $learningSpace->tutorMessages()->create([
+            $reply = $learningSpace->tutorMessages()->create([
                 'role' => 'assistant', 'content' => '', 'citations' => [], 'supplementary_sections' => [],
                 'status' => 'failed', 'failure_message' => $failureMessage,
                 'prompt_version' => OpenAiTutor::PROMPT_VERSION,
@@ -160,10 +166,15 @@ class StudyController extends Controller
                 'language' => $desiredLanguage,
             ]);
 
-            return back()->withInput();
+            return back()
+                ->withInput()
+                ->with('tutor_reply_id', $reply->id)
+                ->withFragment('tutor-reply-status-'.$reply->id);
         }
 
-        return back();
+        return back()
+            ->with('tutor_reply_id', $reply->id)
+            ->withFragment('tutor-reply-status-'.$reply->id);
     }
 
     private function authorizeSpace(Request $request, LearningSpace $learningSpace): void

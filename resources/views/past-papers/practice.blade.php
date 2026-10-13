@@ -24,8 +24,38 @@
                     <h2>Your answer does not match the answer text found in the paper.</h2>
                     <p>The text may not match your original paper exactly. Check the original paper or a marking guide.</p>
                 @else
-                    <h2>Your response is saved, but no score was assigned.</h2>
-                    <p>There was no clear answer in the paper to check it against. Check your original paper or a matching marking guide.</p>
+                    @if (in_array($question->question_type, ['fill_gap', 'structured_response'], true))
+                        <h2>Your response is saved. No score was assigned.</h2>
+                    @else
+                        <h2>Your response is saved, but no score was assigned.</h2>
+                        <p>There was no clear answer in the paper to check it against. Check your original paper or a matching marking guide.</p>
+                    @endif
+                @endif
+                @if ($attempt->written_feedback_status === 'ready')
+                    <div class="answer-feedback" aria-labelledby="written-feedback-heading">
+                        <h2 id="written-feedback-heading">Understand the answer</h2>
+                        <p data-render-math>{{ $attempt->written_feedback }}</p>
+                        <ol class="stack">
+                            @foreach ($attempt->written_feedback_steps ?? [] as $step)
+                                <li data-render-math><strong>{{ $step['title'] }}</strong><br>{{ $step['detail'] }}</li>
+                            @endforeach
+                        </ol>
+                        <p>This is practice feedback, not an official mark.</p>
+                    </div>
+                    @foreach ($writtenFeedbackEvidence as $evidence)
+                        <section class="answer-feedback" aria-labelledby="written-feedback-source-{{ $loop->index }}">
+                            <h3 id="written-feedback-source-{{ $loop->index }}">From your uploaded paper</h3>
+                            <p class="quiz-source-context">{{ $evidence['title'] }} · page {{ $evidence['page'] ?? 'not specified' }} · question {{ $question->question_number }}</p>
+                            <blockquote data-render-math>{{ $evidence['excerpt'] }}</blockquote>
+                            @if ($evidence['continues'])
+                                <p>More text is on this page.</p>
+                            @endif
+                        </section>
+                    @endforeach
+                @elseif ($attempt->written_feedback_status === 'needs_review')
+                    <p class="notice">Your response is saved, but this page does not give enough detail for a clear explanation. No score was assigned.</p>
+                @elseif ($attempt->written_feedback_status === 'unavailable')
+                    <p class="notice">Your response is saved, but written feedback is not available right now. No score was assigned.</p>
                 @endif
                 @if ($question->answer_source === 'source_expected_response' && $question->expected_answer)
                     <div class="answer-feedback">
@@ -41,7 +71,11 @@
             @if ($question->review_reason)
                 <p class="notice" role="status">{{ $question->review_reason }}</p>
             @endif
-            <p>After you submit, we will compare your answer with the text in the paper. If there is no clear answer to compare, your response will be saved without a score.</p>
+            @if (in_array($question->question_type, ['fill_gap', 'structured_response'], true))
+                <p>Submit your answer to see a step-by-step explanation based on this page. No score will be given unless a matching answer guide is confirmed.</p>
+            @else
+                <p>After you submit, we will compare your answer with the text in the paper. If there is no clear answer to compare, your response will be saved without a score.</p>
+            @endif
         @endif
 
         <section class="quiz-question-surface card" aria-labelledby="past-paper-prompt">

@@ -24,12 +24,22 @@ Offline after explicit download: app shell, text lessons, source excerpts, exist
 9. Show a new AI request is unavailable offline, with a useful explanation.
 
 ## Evidence log
+
+The dated Chrome 155 reader and download check is recorded in [Slice 4's live acceptance evidence](backlog/04-offline-and-demo.md). It measures one local pack request and checks offline reading, visible quiz content, keyboard access, and cleanup. The quiz was deliberately left unanswered, so this run is not evidence of offline answer submission or sync.
+
 | Scenario | Network settings | Transferred bytes | Measured duration | Outcome |
 | --- | --- | --- | --- | --- |
 | Cold online load | To measure | To measure | To measure | Pending |
 | Warm study-pack navigation | To measure | To measure | To measure | Pending |
-| Offline reload/read | Chrome 154 CDP offline emulation after pack download | 20 KB pack saved before going offline; reload transfer not separately measured | Not measured | Existing IndexedDB pack reopened with network offline. The study path and section heading rendered; raw `\\section*{...}` markup was not shown. The browser's automatic favicon request failed because the workspace favicon is empty. This pack had no saved quizzes or tutor explanations. |
-| Queued quiz and reconnect | Offline then online | To measure | To measure | Pending |
+| Earlier offline reload/read | Chrome 154 CDP offline emulation; date not recorded in this row | 20 KB pack saved before going offline; reload transfer not separately measured | Not measured | Existing IndexedDB pack reopened with network offline. The study path and section heading rendered; raw `\\section*{...}` markup was not shown. The browser's automatic favicon request failed because the workspace favicon is empty. This pack had no saved quizzes or tutor explanations. The newer 2026-10-13 reader check is linked above. |
+| Earlier queued quiz and reconnect | Offline state simulated with `navigator.onLine`, then online; date not recorded in this row | Not measured | Not measured | The [development log's offline quiz run](DEVELOPMENT_LOG.md#offline-quiz-queue-and-reconnect-grading) reports one 3-question attempt synced to the real endpoint and one saved attempt. It does not record replaying the same submission after an ambiguous response. The 2026-10-13 reader check displayed a quiz but did not submit it. |
+
+### Still pending
+
+- Measure cold online load and warm pack navigation separately, including transferred bytes and duration.
+- Exercise a live expired session, reauthentication to the same learner, account switching, and sign-out cleanup. The JavaScript checks use mocked browser storage and network behavior.
+- Record an offline answer submission, then repeat that same submission after an ambiguous or interrupted sync and verify only one saved attempt. The earlier live run records a single successful sync; it does not document this retry scenario. Server-side idempotency tests do not replace this browser acceptance check.
+- Complete the broader 200% zoom and screen-reader review. The 2026-10-13 check covers keyboard traversal and 320px reflow only.
 
 Throttling demonstrates behavior under a controlled simulated connection. It does not establish field performance on every basic device or network.
 

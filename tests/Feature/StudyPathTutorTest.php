@@ -270,8 +270,35 @@ class StudyPathTutorTest extends TestCase
             }
         });
 
-        $this->actingAs($space->user)->post(route('tutor.ask', $space), ['question' => 'Can you connect that to energy?'])->assertRedirect();
-        $this->assertDatabaseHas('tutor_messages', ['learning_space_id' => $space->id, 'role' => 'assistant', 'content' => 'That glucose stores the energy.']);
+        $response = $this->actingAs($space->user)
+            ->withHeader('referer', route('study.show', $space))
+            ->post(route('tutor.ask', $space), ['question' => 'Can you connect that to energy?']);
+        $reply = $space->tutorMessages()->where('role', 'assistant')->where('content', 'That glucose stores the energy.')->firstOrFail();
+        $replyStatusId = 'tutor-reply-status-'.$reply->id;
+
+        $response->assertRedirect(route('study.show', $space).'#'.$replyStatusId)
+            ->assertSessionHas('tutor_reply_id', $reply->id);
+        $this->get(route('study.show', $space))
+            ->assertOk()
+            ->assertSee('id="'.$replyStatusId.'" role="status" aria-live="polite" tabindex="-1"', false)
+            ->assertSee('A new tutor message follows.')
+            ->assertSee('That glucose stores the energy.');
+    }
+
+    public function test_no_evidence_reply_redirects_to_a_plain_language_status_near_the_tutor_message(): void
+    {
+        $space = LearningSpace::factory()->create();
+        $response = $this->actingAs($space->user)->withHeader('referer', route('study.show', $space))
+            ->post(route('tutor.ask', $space), ['question' => 'Explain this topic.']);
+
+        $reply = $space->tutorMessages()->where('role', 'assistant')->firstOrFail();
+        $replyStatusId = 'tutor-reply-status-'.$reply->id;
+        $response->assertRedirect(route('study.show', $space).'#'.$replyStatusId)
+            ->assertSessionHas('tutor_reply_id', $reply->id);
+        $this->get(route('study.show', $space))
+            ->assertOk()
+            ->assertSee('id="tutor-reply-status-'.$reply->id.'" role="status" aria-live="polite" tabindex="-1"', false)
+            ->assertSee('A new tutor message follows.');
     }
 
     public function test_tutor_check_support_signal_is_saved_and_recommends_another_explanation(): void
@@ -422,11 +449,12 @@ class StudyPathTutorTest extends TestCase
             }
         });
 
-        $this->actingAs($space->user)->from(route('study.show', $space))
-            ->post(route('tutor.ask', $space), ['question' => 'Explain Nigeria.'])
-            ->assertRedirect(route('study.show', $space));
+        $response = $this->actingAs($space->user)->from(route('study.show', $space))
+            ->post(route('tutor.ask', $space), ['question' => 'Explain Nigeria.']);
 
         $message = $space->tutorMessages()->where('role', 'assistant')->firstOrFail();
+        $response->assertRedirect(route('study.show', $space).'#tutor-reply-status-'.$message->id)
+            ->assertSessionHas('tutor_reply_id', $message->id);
         $this->assertSame('failed', $message->status);
         $this->assertSame('yo', $message->language);
         $this->assertStringContainsString('Mi ò lè fìdí ìdáhùn tó ṣeé gbẹ́kẹ̀ lé múlẹ̀', $message->failure_message);
@@ -434,6 +462,7 @@ class StudyPathTutorTest extends TestCase
         $this->assertStringNotContainsString($targetConcept->name, $message->content.$message->failure_message);
         $this->actingAs($space->user)->get(route('study.show', $space))
             ->assertOk()
+            ->assertSee('id="tutor-reply-status-'.$message->id.'" role="status" aria-live="polite" tabindex="-1"', false)
             ->assertSee('Mi ò lè fìdí ìdáhùn tó ṣeé gbẹ́kẹ̀ lé múlẹ̀')
             ->assertSee('Explain Nigeria.');
     }
