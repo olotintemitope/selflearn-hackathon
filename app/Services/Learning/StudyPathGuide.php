@@ -15,11 +15,34 @@ final class StudyPathGuide
      * @param  array<int, array{answered:int, correct:int, percentage:int}>  $progress
      * @return array{item:LearningPathItem, reason:string, minutes:int, read_minutes:int, tutor_minutes:int, practice_minutes:int, needs_review:bool}|null
      */
-    public function nextStep(LearningPath $path, array $progress, array $tutorCheckProgress = []): ?array
+    public function nextStep(LearningPath $path, array $progress, array $tutorCheckProgress = [], array $focusConceptIds = []): ?array
     {
         $items = $path->items;
         if ($items->isEmpty()) {
             return null;
+        }
+
+        // Focus on the selected topics and their foundations without removing
+        // anything from the learning path or allowing prerequisites to be skipped.
+        if ($focusConceptIds !== []) {
+            $byId = $items->keyBy('concept_id');
+            $inFocus = [];
+            $includeWithPrerequisites = function (int $conceptId) use (&$includeWithPrerequisites, &$inFocus, $byId): void {
+                if (isset($inFocus[$conceptId]) || ! $byId->has($conceptId)) {
+                    return;
+                }
+                $inFocus[$conceptId] = true;
+                foreach ($byId->get($conceptId)->concept->prerequisites as $prerequisite) {
+                    $includeWithPrerequisites((int) $prerequisite->id);
+                }
+            };
+            foreach ($focusConceptIds as $conceptId) {
+                $includeWithPrerequisites((int) $conceptId);
+            }
+            $focusedItems = $items->filter(fn ($item) => isset($inFocus[$item->concept_id]));
+            if ($focusedItems->isNotEmpty()) {
+                $items = $focusedItems;
+            }
         }
 
         $item = null;

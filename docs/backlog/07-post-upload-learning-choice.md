@@ -1,6 +1,6 @@
 # Slice 7: Choose how to use an uploaded exam paper
 
-**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Mixed practice now displays source-linked topics for each paper and requires explicit confirmation before starting. Topic subset editing, incomplete extraction/retry review, full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
+**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can now choose paper-linked topics to focus on in the prerequisite-aware path; mixed practice displays source-linked topics for each paper and requires explicit confirmation before starting. Incomplete extraction/retry review, full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
 
 ## Learner outcome
 
@@ -30,7 +30,7 @@ If the implementation agents need to touch the same files, do the recommendation
 
 - [x] Show the choice after extraction completes without waiting for question indexing. Gate concept study on related concepts and practice on ready questions. Pending extraction preserves the existing progress view; no-concept, no-indexing, held-question, and non-paper states are covered by feature tests.
 - [x] Offer distinct practice, concept-first study, and help-me-choose routes without preselecting one. The recommendation form is collapsed until requested.
-- [ ] Display source-linked topic names, page references, excerpts, and practice status. Evidence is filtered to the current extraction version and learners can inspect it, but cannot confirm or correct a topic subset before entering the existing whole-space study path.
+- [x] Display source-linked topic names, page references, excerpts, and practice status. Learners can inspect evidence and choose one or more current paper topics before opening the path. The full learning path remains available; selected topics guide the next step and their required prerequisites are included first. This is a focus choice, not a destructive edit to the space's curriculum.
 - [x] “Learn these topics first” opens the existing guided study path at the selected source-linked concept; the live browser confirmed the route and study page.
 - [ ] “Practise this paper” opens the existing single-paper practice flow for that paper. A separate “Choose papers” action may open the existing mixed-practice selector; retain per-paper attribution. Keep lessons, topic hints, and answer feedback out of the timed question sequence until submission.
 - [x] “Help me choose” asks what the learner wants today, gives a deterministic plain-language recommendation, and keeps an immediate alternate route. A live submission of “I am not sure yet” returned study and practice actions.

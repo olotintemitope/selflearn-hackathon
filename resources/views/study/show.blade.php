@@ -29,6 +29,18 @@
 
     <p><a class="button-link" href="{{ route('past-paper-mixed.index', $learningSpace) }}">Practise questions from multiple papers</a></p>
 
+    @if ($focusMaterial && $focusConcepts->isNotEmpty())
+        <section class="notice stack" aria-labelledby="chosen-topics-heading">
+            <h2 id="chosen-topics-heading">Your chosen topics from {{ $focusMaterial->title }}</h2>
+            <ul>
+                @foreach ($focusConcepts as $concept)
+                    <li><a href="#concept-{{ $concept->id }}">{{ $concept->name }}</a></li>
+                @endforeach
+            </ul>
+            <p>Your path keeps any required foundations first. All other topics remain available below.</p>
+        </section>
+    @endif
+
     @if ($nextStep)
         @php($nextConcept = $nextStep['item']->concept)
         <section class="card next-step" aria-labelledby="next-step-heading">
