@@ -9,9 +9,11 @@ use App\Services\Learning\MaterialRelevanceClassifier;
 use App\Services\Learning\OpenAiAnswerMarker;
 use App\Services\Learning\OpenAiConceptExtractor;
 use App\Services\Learning\OpenAiOpenEndedQuestionGenerator;
+use App\Services\Learning\OpenAiPastPaperWrittenFeedbackGenerator;
 use App\Services\Learning\OpenAiQuizGenerator;
 use App\Services\Learning\OpenAiTutor;
 use App\Services\Learning\OpenEndedQuestionGenerator;
+use App\Services\Learning\PastPaperWrittenFeedbackGenerator;
 use App\Services\Learning\QuizGenerator;
 use App\Services\Learning\Tutor;
 use App\Services\Ocr\CloudOcrClient;
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(QuizGenerator::class, OpenAiQuizGenerator::class);
         $this->app->bind(OpenEndedQuestionGenerator::class, OpenAiOpenEndedQuestionGenerator::class);
         $this->app->bind(AnswerMarker::class, OpenAiAnswerMarker::class);
+        $this->app->bind(PastPaperWrittenFeedbackGenerator::class, OpenAiPastPaperWrittenFeedbackGenerator::class);
     }
 
     /**
