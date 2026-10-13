@@ -551,7 +551,7 @@ class ProcessMaterialTest extends TestCase
                 return new OcrResult([
                     ['page' => 1, 'content' => 'Food and Nutrition: carbohydrates provide energy. Proteins support growth, while vitamins and minerals support health.', 'extractor' => 'pdftotext'],
                     ['page' => 2, 'content' => 'Information and Communication Technology: computer hardware, software, networks, and web pages.', 'extractor' => 'pdftotext'],
-                    ['page' => 3, 'content' => 'Kinetic energy depends on mass and velocity. A force doing work transfers energy and changes motion.', 'extractor' => 'pdftotext'],
+                    ['page' => 3, 'content' => 'Conservation of energy explains energy changes. Work and power describe energy transfer.', 'extractor' => 'pdftotext'],
                 ], null, null, 'pdftotext');
             }
         };
