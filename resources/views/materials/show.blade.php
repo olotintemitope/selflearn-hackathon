@@ -158,6 +158,119 @@
         @if (! empty($material->metadata['extraction_warnings']))
             <aside class="notice" aria-labelledby="extraction-warnings-heading"><h2 id="extraction-warnings-heading">A few pages may need checking</h2><p>Compare the pages marked for review with your original before studying.</p></aside>
         @endif
+        @if ($material->role === 'past_paper' && $material->status === 'ready')
+            @php($firstSourceLinkedConcept = $sourceLinkedConcepts->first())
+            @php($firstStudyLessonUrl = $firstSourceLinkedConcept ? route('study.show', $material->learningSpace).'?concept='.$firstSourceLinkedConcept->id.'#concept-'.$firstSourceLinkedConcept->id : null)
+            <section class="card stack post-upload-choice" aria-labelledby="post-upload-choice-heading">
+                <div>
+                    <p class="eyebrow">Your next step</p>
+                    <h2 id="post-upload-choice-heading">How would you like to use this paper?</h2>
+                    <p>Choose what feels useful now. You can change your mind later. You do not need to study the topics first to practise.</p>
+                </div>
+
+                @if ($sourceLinkedConcepts->isNotEmpty())
+                    <div class="post-upload-topics">
+                        <h3>Topics linked to this paper</h3>
+                        <ul>
+                            @foreach ($sourceLinkedConcepts->take(6) as $concept)
+                                @php($topicPages = $concept->sources->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->where('relevance_status', 'related')->pluck('page')->filter()->unique()->sort()->values())
+                                <li>
+                                    <strong>{{ $concept->name }}</strong>
+                                    @if ($topicPages->isNotEmpty())<span class="muted">Page{{ $topicPages->count() > 1 ? 's' : '' }} {{ $topicPages->join(', ') }}</span>@endif
+                                    <a href="{{ route('study.show', $material->learningSpace).'?concept='.$concept->id.'#concept-'.$concept->id }}">Learn this topic</a>
+                                    <details><summary>See the source pages</summary>
+                                        @foreach ($concept->sources->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->where('relevance_status', 'related') as $source)
+                                            <blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ Illuminate\Support\Str::limit($source->content, 600) }}</blockquote>
+                                        @endforeach
+                                        <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
+                                    </details>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if ($sourceLinkedConcepts->count() > 6)
+                            <details><summary>See all {{ $sourceLinkedConcepts->count() }} topics</summary>
+                                <ul>
+                                    @foreach ($sourceLinkedConcepts->slice(6) as $concept)
+                                        @php($topicPages = $concept->sources->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->where('relevance_status', 'related')->pluck('page')->filter()->unique()->sort()->values())
+                                        <li>
+                                            <strong>{{ $concept->name }}</strong>
+                                            @if ($topicPages->isNotEmpty())<span class="muted">Page{{ $topicPages->count() > 1 ? 's' : '' }} {{ $topicPages->join(', ') }}</span>@endif
+                                            <a href="{{ route('study.show', $material->learningSpace).'?concept='.$concept->id.'#concept-'.$concept->id }}">Learn this topic</a>
+                                            <details><summary>See the source pages</summary>
+                                                @foreach ($concept->sources->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->where('relevance_status', 'related') as $source)
+                                                    <blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ Illuminate\Support\Str::limit($source->content, 600) }}</blockquote>
+                                                @endforeach
+                                                <a href="{{ route('materials.download', $material) }}">Open the original paper</a>
+                                            </details>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </details>
+                        @endif
+                        <p class="muted">Only topics connected to pages in this paper that match your study goal are shown here. Question wording is checked separately.</p>
+                    </div>
+                @else
+                    <p class="notice">There are no study topics linked to this paper yet. You can still practise any questions that are ready.</p>
+                @endif
+
+                <p class="post-upload-question-status"><strong>Practice questions:</strong>
+                    @if ($readyPastPaperQuestionCount > 0)
+                        {{ $readyPastPaperQuestionCount }} ready to practise.
+                    @elseif ($pastPaperQuestions->isNotEmpty())
+                        None are ready yet. {{ $heldPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('question', $heldPastPaperQuestionCount) }} {{ $heldPastPaperQuestionCount === 1 ? 'needs' : 'need' }} a check against the paper.
+                    @else
+                        Questions have not been prepared yet.
+                    @endif
+                </p>
+
+                <div class="actions post-upload-choice-actions">
+                    @if ($readyPastPaperQuestionCount > 0)
+                        <a class="button-link" href="#past-paper-practice-start">Practise this paper</a>
+                    @else
+                        <a class="button-link" href="#past-paper-questions-heading">Find or review questions</a>
+                    @endif
+                    @if ($firstStudyLessonUrl)
+                        <a class="button-secondary" href="{{ $firstStudyLessonUrl }}">Learn these topics first</a>
+                    @endif
+                    @if ($mixedReadyPaperCount >= 2)
+                        <a href="{{ route('past-paper-mixed.index', $material->learningSpace) }}">Choose papers for mixed practice</a>
+                    @endif
+                </div>
+
+                <details class="post-upload-help" @if ($choiceIntent !== null) open @endif>
+                    <summary>Help me choose</summary>
+                    <form method="GET" action="{{ route('materials.show', $material) }}#post-upload-choice-result" class="stack">
+                        <fieldset class="stack">
+                            <legend>What feels right to you today?</legend>
+                            <label class="quiz-option"><input type="radio" name="learning_intent" value="practise" required @checked($choiceIntent === 'practise')> I want to try questions now</label>
+                            <label class="quiz-option"><input type="radio" name="learning_intent" value="learn_first" required @checked($choiceIntent === 'learn_first')> I want to understand the topics first</label>
+                            <label class="quiz-option"><input type="radio" name="learning_intent" value="unsure" required @checked($choiceIntent === 'unsure')> I am not sure yet</label>
+                        </fieldset>
+                        <button type="submit">Suggest a next step</button>
+                    </form>
+                </details>
+
+                @if ($learningChoice)
+                    <aside class="notice post-upload-choice-result" id="post-upload-choice-result" role="status" aria-live="polite" tabindex="-1">
+                        <p>{{ $learningChoice['reason'] }}</p>
+                        @if ($learningChoice['route'] === 'practise' && $readyPastPaperQuestionCount > 0)
+                            <a class="button-link" href="#past-paper-practice-start">Go to exam practice</a>
+                        @elseif ($learningChoice['route'] === 'learn_first' && $firstStudyLessonUrl)
+                            <a class="button-link" href="{{ $firstStudyLessonUrl }}">Open your study path</a>
+                        @elseif ($learningChoice['route'] === 'practise')
+                            <a href="#past-paper-questions-heading">Check the practice questions</a>
+                        @elseif ($learningChoice['route'] === 'learn_first' && ! $firstStudyLessonUrl)
+                            <a href="#past-paper-questions-heading">Review this paper</a>
+                        @endif
+                        @if ($learningChoice['route'] === 'learn_first' && $readyPastPaperQuestionCount > 0)
+                            <a href="#past-paper-practice-start">Practise this paper instead</a>
+                        @elseif ($learningChoice['route'] === 'practise' && $firstStudyLessonUrl)
+                            <a href="{{ $firstStudyLessonUrl }}">Learn these topics instead</a>
+                        @endif
+                    </aside>
+                @endif
+            </section>
+        @endif
         @if ($material->role === 'past_paper')
             <section class="stack" aria-labelledby="past-paper-questions-heading">
                 <div class="section-heading">
@@ -165,14 +278,24 @@
                         <p class="eyebrow">Past-paper question bank</p>
                         <h2 id="past-paper-questions-heading">Questions found in this paper</h2>
                     </div>
-                    <form method="POST" action="{{ route('materials.past-paper-questions.index', $material) }}">
-                        @csrf
-                        <button class="button-secondary">{{ $pastPaperQuestions->isEmpty() ? 'Find questions on this paper' : 'Refresh questions from this paper' }}</button>
-                    </form>
+                    @if ($pastPaperQuestions->isEmpty())
+                        <form method="POST" action="{{ route('materials.past-paper-questions.index', $material) }}">
+                            @csrf<button class="button-secondary">Find questions on this paper</button>
+                        </form>
+                    @endif
                 </div>
+                @if ($pastPaperQuestions->isNotEmpty())
+                    <details class="question-bank-refresh">
+                        <summary>Questions missing or need updating?</summary>
+                        <p>Check this paper again to look for more practice questions.</p>
+                        <form method="POST" action="{{ route('materials.past-paper-questions.index', $material) }}">
+                            @csrf<button class="button-secondary">Refresh questions from this paper</button>
+                        </form>
+                    </details>
+                @endif
                 <p>Questions are gathered from the pages of your paper. Compare each one with the original before practising. Any answer text found stays hidden until you submit.</p>
                 @if ($readyPastPaperQuestionCount > 0)
-                    <form method="POST" action="{{ route('past-paper-practice.start', $material) }}" class="paper-practice-start">
+                    <form id="past-paper-practice-start" method="POST" action="{{ route('past-paper-practice.start', $material) }}" class="paper-practice-start">
                         @csrf
                         <div>
                             <p><strong>{{ $readyPastPaperQuestionCount }} {{ Illuminate\Support\Str::plural('question', $readyPastPaperQuestionCount) }}</strong> can be practised together. Questions needing a check stay out of the session.</p>
@@ -273,10 +396,10 @@
         @endif
         <section><div class="section-heading"><div><p class="eyebrow">Your next step</p><h2>Source-linked concepts</h2></div><a class="button-link" href="{{ route('study.show', $material->learningSpace) }}">Open study path</a></div><div class="concept-grid">
             @foreach ($material->learningSpace->concepts as $concept)
-                @if ($concept->sources->where('relevance_status', 'related')->whereIn('material_id', [$material->id])->isNotEmpty())
+                @if ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id)->where('extraction_version', $material->extraction_version)->isNotEmpty())
                     <article class="card"><h3>{{ $concept->name }}</h3><p data-render-math>{{ $concept->description }}</p>
                         @if ($concept->prerequisites->isNotEmpty())<p class="muted">Prerequisites: {{ $concept->prerequisites->pluck('name')->join(', ') }}</p>@endif
-                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote>@endforeach</details>
+                        <details><summary>View source evidence</summary>@foreach ($concept->sources->where('relevance_status', 'related')->where('material_id', $material->id)->where('extraction_version', $material->extraction_version) as $source)<blockquote><strong>Page {{ $source->page ?? 'unknown' }}</strong><br>{{ $source->content }}</blockquote>@endforeach</details>
                     </article>
                 @endif
             @endforeach
