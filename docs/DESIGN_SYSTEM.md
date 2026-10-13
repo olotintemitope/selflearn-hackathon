@@ -105,7 +105,7 @@ Describe the learner outcome in plain language, such as “Preparing your study 
 
 ### Header
 
-Use the serif SelfLearn wordmark followed by a small green robot icon on the left and one compact session action on the right. Keep the icon decorative and hidden from assistive technology so the linked brand is announced once. Keep the header quiet so learner content remains dominant.
+Use the serif SelfLearn wordmark followed by a small green robot icon on the left. On the right, show a compact, icon-only accessibility preferences control with a minimum 44px target and an accessible name, followed by the sign-out action. Keep decorative SVGs hidden from assistive technology, provide a visible focus ring, and keep the header quiet so learner content remains dominant.
 
 ### Hero
 
