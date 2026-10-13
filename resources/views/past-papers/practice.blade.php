@@ -34,14 +34,24 @@
                 @if ($attempt->written_feedback_status === 'ready')
                     <div class="answer-feedback" aria-labelledby="written-feedback-heading">
                         <h2 id="written-feedback-heading">Understand the answer</h2>
-                        <p>{{ $attempt->written_feedback }}</p>
+                        <p data-render-math>{{ $attempt->written_feedback }}</p>
                         <ol class="stack">
                             @foreach ($attempt->written_feedback_steps ?? [] as $step)
-                                <li><strong>{{ $step['title'] }}</strong><br>{{ $step['detail'] }}</li>
+                                <li data-render-math><strong>{{ $step['title'] }}</strong><br>{{ $step['detail'] }}</li>
                             @endforeach
                         </ol>
-                        <p class="quiz-source-context">Based on your uploaded paper, page {{ $question->page ?? 'not specified' }}. This is practice feedback, not an official mark.</p>
+                        <p>This is practice feedback, not an official mark.</p>
                     </div>
+                    @foreach ($writtenFeedbackEvidence as $evidence)
+                        <section class="answer-feedback" aria-labelledby="written-feedback-source-{{ $loop->index }}">
+                            <h3 id="written-feedback-source-{{ $loop->index }}">From your uploaded paper</h3>
+                            <p class="quiz-source-context">{{ $evidence['title'] }} · page {{ $evidence['page'] ?? 'not specified' }} · question {{ $question->question_number }}</p>
+                            <blockquote data-render-math>{{ $evidence['excerpt'] }}</blockquote>
+                            @if ($evidence['continues'])
+                                <p>More text is on this page.</p>
+                            @endif
+                        </section>
+                    @endforeach
                 @elseif ($attempt->written_feedback_status === 'needs_review')
                     <p class="notice">Your response is saved, but this page does not give enough detail for a clear explanation. No score was assigned.</p>
                 @elseif ($attempt->written_feedback_status === 'unavailable')

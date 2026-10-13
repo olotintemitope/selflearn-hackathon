@@ -210,11 +210,50 @@ class PastPaperPracticeController extends Controller
         $this->authorize('view', $material);
         abort_unless($attempt->user_id === $request->user()->id, 404);
 
+        $writtenFeedbackEvidence = collect();
+        if ($attempt->written_feedback_status === 'ready') {
+            $citationIds = collect($attempt->written_feedback_source_chunk_ids ?? [])
+                ->filter(fn ($id): bool => is_int($id) || (is_string($id) && ctype_digit($id)))
+                ->map(fn ($id): int => (int) $id)
+                ->unique()->values();
+
+            if ($citationIds->isEmpty() || $citationIds->contains(fn (int $id): bool => $id !== (int) $attempt->question->material_chunk_id)) {
+                $attempt->setAttribute('written_feedback_status', 'unavailable');
+            } else {
+                $chunks = $material->chunks()
+                    ->whereIn('id', $citationIds)
+                    ->where('extraction_version', $attempt->question->extraction_version)
+                    ->where('relevance_status', 'related')
+                    ->get()->keyBy('id');
+
+                if ($chunks->count() !== $citationIds->count()) {
+                    $attempt->setAttribute('written_feedback_status', 'unavailable');
+                } else {
+                    $writtenFeedbackEvidence = $chunks->map(function ($chunk) use ($attempt, $material): array {
+                        $sourceText = (string) $chunk->content;
+                        $anchor = trim((string) $attempt->question->source_text);
+                        $anchor = mb_substr($anchor, 0, 160);
+                        $position = $anchor === '' ? false : mb_stripos($sourceText, $anchor);
+                        $start = $position === false ? 0 : (int) $position;
+                        $excerpt = mb_substr($sourceText, $start, 900);
+
+                        return [
+                            'title' => $material->title,
+                            'page' => $chunk->page,
+                            'excerpt' => $excerpt,
+                            'continues' => $start + mb_strlen($excerpt) < mb_strlen($sourceText),
+                        ];
+                    })->values();
+                }
+            }
+        }
+
         return view('past-papers.practice', [
             'material' => $material,
             'question' => $attempt->question,
             'attempt' => $attempt,
             'sourceChunk' => $attempt->question->sourceChunk,
+            'writtenFeedbackEvidence' => $writtenFeedbackEvidence,
         ]);
     }
 

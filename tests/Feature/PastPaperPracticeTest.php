@@ -88,15 +88,17 @@ class PastPaperPracticeTest extends TestCase
 
     public function test_submitted_written_answer_gets_source_linked_explanation_without_a_score(): void
     {
+        $fixture = json_decode(file_get_contents(base_path('tests/Fixtures/PastPaperFeedback/work-formula-fill-gap.json')), true, flags: JSON_THROW_ON_ERROR);
         [$user, $material, $question] = $this->candidate([
             'question_type' => 'fill_gap',
-            'prompt' => 'Energy is measured in _____.',
+            'prompt' => $fixture['question'],
             'options' => null,
-            'expected_answer' => 'joules',
+            'expected_answer' => 'W = Fd',
             'answer_source' => 'source_expected_response',
+            'source_text' => $fixture['question'],
         ]);
-        $fixture = json_decode(file_get_contents(base_path('tests/Fixtures/PastPaperFeedback/energy-fill-gap.json')), true, flags: JSON_THROW_ON_ERROR);
-        $question->sourceChunk->update(['content' => $fixture['source_text']]);
+        $longSourceText = $fixture['source_text'].' '.str_repeat('Additional source text. ', 100);
+        $question->sourceChunk->update(['content' => $longSourceText]);
         $fake = new class($fixture, $question->sourceChunk->id) implements PastPaperWrittenFeedbackGenerator
         {
             public array $received = [];
@@ -118,9 +120,9 @@ class PastPaperPracticeTest extends TestCase
         $this->actingAs($user)->get(route('past-paper-questions.practice', [$material, $question]))
             ->assertOk()
             ->assertDontSee('Understand the answer')
-            ->assertDontSee('Your answer matches the unit stated in the paper.');
+            ->assertDontSee('You used the formula stated in the paper.');
 
-        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'joules'])
+        $this->actingAs($user)->post(route('past-paper-questions.submit', [$material, $question]), ['value' => $fixture['learner_response']])
             ->assertRedirect();
 
         $attempt = PastPaperAttempt::query()->firstOrFail();
@@ -128,16 +130,25 @@ class PastPaperPracticeTest extends TestCase
         $this->assertSame('none', $attempt->marking_basis);
         $this->assertSame('ready', $attempt->written_feedback_status);
         $this->assertSame([$question->sourceChunk->id], $attempt->written_feedback_source_chunk_ids);
-        $this->assertSame('joules', $fake->received['learnerResponse']);
+        $this->assertSame($fixture['learner_response'], $fake->received['learnerResponse']);
         $this->assertSame('fill_gap', $fake->received['questionType']);
         $this->assertSame((int) $question->sourceChunk->id, $fake->received['evidence'][0]['id']);
 
-        $this->get(route('past-paper-attempts.show', $attempt))
-            ->assertOk()
+        $result = $this->get(route('past-paper-attempts.show', $attempt));
+        $result->assertOk()
+            ->assertViewHas('writtenFeedbackEvidence', fn ($items): bool => $items->count() === 1
+                && mb_strlen($items[0]['excerpt']) === 900
+                && $items[0]['excerpt'] === mb_substr($longSourceText, 0, 900)
+                && $items[0]['page'] === 12)
             ->assertSee('No score was assigned.')
             ->assertSee('Understand the answer')
-            ->assertSee('Check the source')
-            ->assertSee('Based on your uploaded paper, page 12.')
+            ->assertSee('<p data-render-math>You used the formula stated in the paper.</p>', false)
+            ->assertSee('<li data-render-math><strong>Use the source formula</strong><br>The paper shows \\(W = Fd\\).</li>', false)
+            ->assertSee('<li data-render-math><strong>Match the symbols</strong><br>The source defines \\(F\\) as force and \\(d\\) as distance.</li>', false)
+            ->assertSee('The paper shows \\(W = Fd\\).')
+            ->assertSee('From your uploaded paper')
+            ->assertSee($material->title.' · page 12 · question 1')
+            ->assertSee('Work is calculated with \\(W = Fd\\), where \\(F\\) is force and \\(d\\) is distance.')
             ->assertSee('This is practice feedback, not an official mark.')
             ->assertDontSee('written_feedback_status');
     }
@@ -522,7 +533,9 @@ class PastPaperPracticeTest extends TestCase
 
         $this->actingAs($other)->get(route('past-paper-questions.practice', [$material, $question]))->assertForbidden();
         $this->post(route('past-paper-questions.submit', [$material, $question]), ['value' => 'A'])->assertForbidden();
-        $this->get(route('past-paper-attempts.show', $attempt))->assertForbidden();
+        $this->get(route('past-paper-attempts.show', $attempt))
+            ->assertForbidden()
+            ->assertDontSee('Private practice feedback.');
     }
 
     private function candidate(array $overrides = []): array

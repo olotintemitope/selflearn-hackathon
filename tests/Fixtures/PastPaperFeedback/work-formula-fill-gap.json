@@ -1,0 +1,20 @@
+{
+  "question_type": "fill_gap",
+  "question": "The formula for work is _____.",
+  "learner_response": "\\(W = Fd\\)",
+  "source_text": "The formula for work is _____. Work is calculated with \\(W = Fd\\), where \\(F\\) is force and \\(d\\) is distance.",
+  "expected_feedback": {
+    "status": "ready",
+    "feedback": "You used the formula stated in the paper.",
+    "steps": [
+      {
+        "title": "Use the source formula",
+        "detail": "The paper shows \\(W = Fd\\)."
+      },
+      {
+        "title": "Match the symbols",
+        "detail": "The source defines \\(F\\) as force and \\(d\\) as distance."
+      }
+    ]
+  }
+}
