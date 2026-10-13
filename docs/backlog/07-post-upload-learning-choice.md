@@ -1,6 +1,6 @@
 # Slice 7: Choose how to use an uploaded exam paper
 
-**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can choose paper-linked topics to focus the prerequisite-aware path, and processing or failure pages link to other ready materials in the same space. Mixed practice shows source-linked topics for each paper and requires explicit confirmation before starting. Full route-switch acceptance, broad keyboard testing, and direct 200% zoom remain open.
+**Backlog status:** In progress. The ready-paper page offers practice, concept-first study, and help-me-choose routes. Learners can choose paper-linked topics to focus the prerequisite-aware path, and processing or failure pages link to other ready materials in the same space. Mixed practice shows source-linked topics for each paper and requires explicit confirmation before starting. Route switching and browser back were checked live; broad keyboard testing, direct 200% zoom, and screen-reader review remain open.
 
 ## Learner outcome
 
@@ -67,7 +67,7 @@ If the implementation agents need to touch the same files, do the recommendation
 - [x] Mixed or unrelated materials: the learner sees distinct topics under each paper and explicitly confirms before starting mixed practice.
 - [x] Learner intent produces a reasoned recommendation and does not lock the learner into a route. Automated tests cover intent outcomes; the live browser covered “not sure.”
 - [x] Owner and non-owner access to the material page is covered by feature tests; destinations retain their existing ownership checks.
-- [ ] Verify browser back and route switching across practice, mixed practice, and study destinations.
+- [x] Verify browser back and route switching across practice, mixed practice, and study destinations. Live browser returned from each destination to the source paper page; the practice session was not submitted.
 
 ## Verification evidence to record
 
